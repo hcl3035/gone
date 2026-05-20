@@ -43,12 +43,14 @@ GOTEST    = $(GO) test -trimpath
 SERVICE   = $(APPNAME).service
 
 ASSET_CSS = assets/style.css
+ASSET_JS  = assets/wall-copy.js
 SETTINGS  = settings/defaultSettings.json
 
 CONF_DIR ?= /etc/$(APPNAME)
 DEST_BIN  = /usr/local/bin/$(APPNAME)
 DEST_CONF = $(CONF_DIR)/config
 DEST_CSS  = $(CONF_DIR)/$(ASSET_CSS)
+DEST_JS   = $(CONF_DIR)/$(ASSET_JS)
 DEST_SERV = /etc/systemd/system/$(SERVICE)
 
 MOD_BIN   = 0755
@@ -91,6 +93,8 @@ install: install-assets install-bin \
 install-assets:
 	@sudo install -Dm $(MOD_FILE) $(ASSET_CSS) $(DEST_CSS)
 	@printf "Installed $(DEST_CSS)\n"
+	@sudo install -Dm $(MOD_FILE) $(ASSET_JS) $(DEST_JS)
+	@printf "Installed $(DEST_JS)\n"
 
 install-bin: build
 	@sudo install -Dm $(MOD_BIN) $(OUT)/$(BINNAME) $(DEST_BIN)
