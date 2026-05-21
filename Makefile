@@ -101,8 +101,13 @@ install-bin: build
 	@printf "Installed $(DEST_BIN)\n"
 
 install-config:
-	@sudo install -Dm $(MOD_FILE) $(SETTINGS) $(DEST_CONF)
-	@printf "Installed $(DEST_CONF)\n"
+	@if [ -f $(DEST_CONF) ]; then \
+		printf "Config file already exists at $(DEST_CONF), skipping installation\n"; \
+		printf "To overwrite, run: sudo cp $(SETTINGS) $(DEST_CONF)\n"; \
+	else \
+		sudo install -Dm $(MOD_FILE) $(SETTINGS) $(DEST_CONF); \
+		printf "Installed $(DEST_CONF)\n"; \
+	fi
 
 install-service:
 	@sudo install -Dm $(MOD_FILE) $(SERVICE) $(DEST_SERV)
