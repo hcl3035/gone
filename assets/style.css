@@ -119,6 +119,218 @@ select {
   min-height: 200px;
 }
 
+.imagePreviewContainer {
+  margin: 10px 0;
+  padding: 10px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 15px;
+  justify-content: center;
+  align-items: flex-start;
+}
+
+.imageWrapper {
+  position: relative;
+  display: inline-block;
+}
+
+.previewImage {
+  max-width: 200px;
+  max-height: 200px;
+  border-radius: var(--box-radius);
+  border: 2px solid var(--fg-dark);
+  box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+  cursor: pointer;
+}
+
+.previewImage:hover {
+  transform: scale(1.05);
+  box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+}
+
+.deleteImageButton {
+  position: absolute;
+  top: -8px;
+  right: -8px;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background-color: #ff4444;
+  color: white;
+  border: 2px solid white;
+  font-size: 16px;
+  line-height: 1;
+  padding: 0;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+  transition: all 0.2s ease;
+  margin: 0;
+}
+
+.deleteImageButton:hover {
+  background-color: #cc0000;
+  transform: scale(1.1);
+}
+
+/* 图片模态框样式 */
+.imageModal {
+  display: none;
+  position: fixed;
+  z-index: 10001;
+  left: 0;
+  top: 0;
+  width: 100vw;
+  height: 100vh;
+  background-color: rgba(0, 0, 0, 0.95);
+  overflow: hidden;
+}
+
+.modal-toolbar {
+  position: fixed;
+  top: 20px;
+  left: 50%;
+  transform: translateX(-50%);
+  background-color: rgba(0, 0, 0, 0.7);
+  padding: 10px 20px;
+  border-radius: 30px;
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  z-index: 10003;
+}
+
+.toolbar-btn {
+  background-color: rgba(255, 255, 255, 0.2);
+  color: white;
+  border: 2px solid rgba(255, 255, 255, 0.4);
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  font-size: 20px;
+  cursor: pointer;
+  transition: all 0.2s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.toolbar-btn:hover {
+  background-color: rgba(255, 255, 255, 0.4);
+  transform: scale(1.1);
+}
+
+.zoom-level {
+  color: white;
+  font-size: 16px;
+  min-width: 50px;
+  text-align: center;
+}
+
+.modal-close {
+  position: fixed;
+  top: 20px;
+  right: 20px;
+  color: #fff;
+  font-size: 48px;
+  font-weight: bold;
+  cursor: pointer;
+  transition: all 0.2s;
+  z-index: 10003;
+  width: 50px;
+  height: 50px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background-color: rgba(255, 68, 68, 0.3);
+  border-radius: 50%;
+  border: 2px solid rgba(255, 255, 255, 0.5);
+}
+
+.modal-close:hover {
+  background-color: rgba(255, 68, 68, 0.6);
+  transform: rotate(90deg);
+}
+
+.modal-nav {
+  position: fixed;
+  top: 50%;
+  transform: translateY(-50%);
+  background-color: rgba(255, 255, 255, 0.15);
+  color: white;
+  border: 2px solid rgba(255, 255, 255, 0.3);
+  font-size: 36px;
+  width: 60px;
+  height: 100px;
+  cursor: pointer;
+  transition: all 0.2s;
+  border-radius: 8px;
+  z-index: 10002;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.modal-nav:hover {
+  background-color: rgba(255, 255, 255, 0.3);
+  border-color: rgba(255, 255, 255, 0.6);
+  transform: translateY(-50%) scale(1.1);
+}
+
+.modal-prev {
+  left: 20px;
+}
+
+.modal-next {
+  right: 20px;
+}
+
+.modal-image-container {
+  position: relative;
+  width: 100%;
+  height: 100vh;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  overflow: hidden;
+}
+
+.modal-image {
+  max-width: 100%;
+  max-height: calc(100vh - 160px);
+  object-fit: contain;
+  border-radius: var(--box-radius);
+  transition: none;
+  cursor: default;
+  user-select: none;
+  -webkit-user-drag: none;
+}
+
+.modal-image.grabbable {
+  cursor: grab;
+}
+
+.modal-image:active {
+  cursor: grabbing;
+}
+
+.modal-caption {
+  position: fixed;
+  bottom: 30px;
+  left: 50%;
+  transform: translateX(-50%);
+  color: #ccc;
+  font-size: 18px;
+  text-align: center;
+  background-color: rgba(0, 0, 0, 0.7);
+  padding: 10px 20px;
+  border-radius: 20px;
+  z-index: 10002;
+}
+
 input[type="number"] {
   appearance: textfield;
 }
