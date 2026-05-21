@@ -6,6 +6,9 @@
             return;
         }
 
+        const box = textarea.closest('.box');
+
+        // 复制功能
         textarea.addEventListener('mouseup', function() {
             const selectedText = textarea.value.substring(
                 textarea.selectionStart,
@@ -26,6 +29,61 @@
             } else {
                 fallbackCopy(selectedText);
             }
+        });
+
+        // 监听textarea的resize事件，同步调整box宽度
+        let isResizing = false;
+        let animationFrameId = null;
+        let lastBoxWidth = 0;
+
+        function updateBoxWidth() {
+            if (isResizing && box) {
+                const textareaWidth = textarea.offsetWidth;
+                const boxPadding = 32;
+                const newWidth = textareaWidth + boxPadding;
+                
+                if (Math.abs(newWidth - lastBoxWidth) > 2) {
+                    box.style.width = newWidth + 'px';
+                    lastBoxWidth = newWidth;
+                }
+            }
+            animationFrameId = requestAnimationFrame(updateBoxWidth);
+        }
+
+        textarea.addEventListener('mousedown', function() {
+            isResizing = true;
+            lastBoxWidth = box ? box.offsetWidth : 0;
+            if (!animationFrameId) {
+                updateBoxWidth();
+            }
+        });
+
+        document.addEventListener('mouseup', function() {
+            if (isResizing) {
+                isResizing = false;
+                if (animationFrameId) {
+                    cancelAnimationFrame(animationFrameId);
+                    animationFrameId = null;
+                }
+            }
+        });
+
+        // 窗口大小改变时重置textarea和box尺寸
+        let windowResizeTimeout;
+        
+        window.addEventListener('resize', function() {
+            clearTimeout(windowResizeTimeout);
+            
+            // 缩短debounce时间，更快响应
+            windowResizeTimeout = setTimeout(function() {
+                // 清除手动调整的inline style，恢复CSS控制
+                textarea.style.width = '';
+                textarea.style.height = '';
+                if (box) {
+                    box.style.width = '';
+                }
+                lastBoxWidth = 0;
+            }, 50);
         });
 
         function fallbackCopy(text) {
