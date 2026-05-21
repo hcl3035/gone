@@ -18,8 +18,14 @@
     let translateX = 0;
     let translateY = 0;
     
-    // 存储已上传图片的映射（fileId -> imageUrl）
+    // 存储已上传图片的映射（imageNumber -> fileId）
     let uploadedImages = {};
+    
+    // 存储所有图片信息（fileId -> imageUrl）
+    let imageStore = {};
+    
+    // 全局图片序号（用于文本框显示）
+    let globalImageNumber = 0;
 
     function initWallCopy() {
         const textarea = document.getElementById('wallContent');
@@ -47,6 +53,9 @@
         if (savedCounter) {
             imageCounter = parseInt(savedCounter);
         }
+        
+        // 计算当前已有多少图片，确定下一个序号
+        globalImageNumber = countExistingImages(textarea.value);
 
         // 复制功能
         textarea.addEventListener('mouseup', function() {
@@ -81,9 +90,13 @@
                     
                     const blob = items[i].getAsFile();
                     
-                    // 生成简短ID
+                    // 增加全局序号
+                    globalImageNumber++;
+                    const imageNum = globalImageNumber;
+                    
+                    // 生成临时ID用于上传
                     imageCounter++;
-                    const imageId = userId.substr(-6) + '_' + currentDate + '_' + imageCounter;
+                    const tempId = currentDate + '_' + imageCounter;
                     
                     // 保存到 localStorage
                     localStorage.setItem('imgCounter_' + currentDate, imageCounter.toString());
@@ -91,40 +104,41 @@
                     // 先显示临时预览（使用本地 Blob URL）
                     const tempUrl = URL.createObjectURL(blob);
                     
-                    // 在光标位置插入图片标记
+                    // 在光标位置插入超短标记：📷1、📷2...
                     const startPos = textarea.selectionStart;
                     const endPos = textarea.selectionEnd;
                     const text = textarea.value;
                     
-                    // 统一使用 \n 作为换行符
-                    const imageMarkdown = '\n![' + imageId + ']\n';
+                    // 使用 emoji + 序号
+                    const imageMarkdown = '📷' + imageNum;
                     
                     textarea.value = text.substring(0, startPos) + imageMarkdown + text.substring(endPos);
                     
-                    // 移动光标
+                    // 移动光标到标记后面
                     const newPos = startPos + imageMarkdown.length;
                     textarea.setSelectionRange(newPos, newPos);
                     
+                    // 存储图片信息（用序号作为键）
+                    imageStore['#' + imageNum] = { url: tempUrl, type: 'temp', tempId: tempId };
+                    
                     // 渲染临时预览
-                    renderImagePreview(imageId, tempUrl);
+                    renderImagePreview('#' + imageNum, tempUrl);
                     
                     showCopyNotification('正在上传图片...');
                     
                     // 异步上传到服务器
-                    uploadImageToServer(blob, imageId, function(fileId) {
+                    uploadImageToServer(blob, tempId, function(fileId) {
                         // 上传成功，更新映射
-                        uploadedImages[imageId] = wallImagePath + fileId;
+                        uploadedImages['#' + imageNum] = fileId;
+                        imageStore['#' + imageNum] = { url: wallImagePath + fileId, type: 'server', fileId: fileId };
                         
-                        // 替换 textarea 中的标记为文件ID
-                        const pattern = new RegExp('\\n!\\[' + imageId + '\\]\\n', 'g');
-                        const fileMarkdown = '\n![' + fileId + ']\n';
-                        textarea.value = textarea.value.replace(pattern, fileMarkdown);
-                        
-                        // 更新预览图片的 src
-                        const previewImg = document.querySelector(`img[data-image-id="${imageId}"]`);
+                        // 更新预览图片的信息
+                        const previewImg = document.querySelector(`img[data-image-id="#${imageNum}"]`);
                         if (previewImg) {
                             previewImg.src = wallImagePath + fileId;
                             previewImg.dataset.imageUrl = wallImagePath + fileId;
+                            previewImg.dataset.fileId = fileId;
+                            previewImg.dataset.displayNum = imageNum.toString();
                         }
                         
                         showCopyNotification('图片上传成功');
@@ -141,12 +155,26 @@
             }
         });
 
+        // 统计已有图片数量
+        function countExistingImages(content) {
+            const pattern = /📷(\d+)/g;
+            let match;
+            let maxNum = 0;
+            while ((match = pattern.exec(content)) !== null) {
+                const num = parseInt(match[1]);
+                if (num > maxNum) {
+                    maxNum = num;
+                }
+            }
+            return maxNum;
+        }
+
         // 上传图片到服务器
-        function uploadImageToServer(blob, imageId, onSuccess, onError) {
+        function uploadImageToServer(blob, tempId, onSuccess, onError) {
             const formData = new FormData();
-            formData.append('file', blob, imageId + '.png');
-            formData.append('downloads', '999'); // 设置较多的下载次数
-            formData.append('duration', '72h'); // 设置3天有效期
+            formData.append('file', blob, tempId + '.png');
+            formData.append('downloads', '9999');
+            formData.append('duration', '168h');
             
             fetch('/upload', {
                 method: 'POST',
@@ -159,14 +187,15 @@
                 return response.json();
             })
             .then(function(data) {
-                // data 是上传结果数组，取第一个文件的ID
                 if (data && data.length > 0 && data[0].id) {
+                    console.log('Upload success, file ID:', data[0].id);
                     onSuccess(data[0].id);
                 } else {
                     onError('No file ID returned');
                 }
             })
             .catch(function(error) {
+                console.error('Upload error:', error);
                 onError(error);
             });
         }
@@ -273,7 +302,7 @@
         }
 
         // 渲染图片预览
-        function renderImagePreview(imageId, imageUrl) {
+        function renderImagePreview(imageKey, imageUrl, isTemp) {
             // 创建或获取预览容器
             let previewContainer = document.getElementById('imagePreviewContainer');
             if (!previewContainer) {
@@ -288,15 +317,21 @@
             // 创建图片元素
             const img = document.createElement('img');
             img.src = imageUrl;
-            img.alt = 'Image ' + imageId;
+            img.alt = 'Image ' + imageKey;
             img.title = '点击查看原图';
             img.className = 'previewImage';
-            img.dataset.imageId = imageId;
+            img.dataset.imageId = imageKey;
             img.dataset.imageUrl = imageUrl;
+            
+            // 如果是服务器图片，设置 displayNum 和 fileId
+            if (!isTemp) {
+                const num = imageKey.replace('#', '');
+                img.dataset.displayNum = num;
+            }
             
             // 点击图片查看原图
             img.onclick = function() {
-                openImageModal(imageUrl, imageId);
+                openImageModal(imageUrl, imageKey);
             };
             
             // 添加删除按钮
@@ -306,15 +341,9 @@
             deleteBtn.innerHTML = '×';
             deleteBtn.title = '删除图片';
             deleteBtn.onclick = function() {
-                // 从 textarea 中移除对应的标记（支持多种格式）
-                const pattern1 = new RegExp('\\n!\\[' + imageId + '\\]\\n', 'g');
-                const pattern2 = new RegExp('\\n!\\[' + imageId + '\\]\\r\\n', 'g');
-                const pattern3 = new RegExp('\\n!\\[' + imageId + '\\]', 'g');
-                
-                textarea.value = textarea.value
-                    .replace(pattern1, '\n')
-                    .replace(pattern2, '\n')
-                    .replace(pattern3, '\n');
+                // 从 textarea 中移除对应的标记
+                const pattern = new RegExp('📷' + imageKey.replace('#', '') + '(?!\\d)', 'g');
+                textarea.value = textarea.value.replace(pattern, '');
                 
                 // 移除预览图片
                 wrapper.remove();
@@ -323,6 +352,9 @@
                 if (previewContainer.children.length === 0) {
                     previewContainer.remove();
                 }
+                
+                // 清理存储
+                delete imageStore[imageKey];
                 
                 showCopyNotification('已删除图片');
             };
@@ -337,7 +369,7 @@
         }
 
         // 打开图片模态框
-        function openImageModal(imageUrl, imageId) {
+        function openImageModal(imageUrl, imageKey) {
             // 收集所有图片
             allImages = [];
             const previewImgs = document.querySelectorAll('.previewImage');
@@ -346,7 +378,7 @@
                     id: img.dataset.imageId,
                     src: img.dataset.imageUrl
                 });
-                if (img.dataset.imageId === imageId) {
+                if (img.dataset.imageId === imageKey) {
                     currentImageIndex = index;
                 }
             });
@@ -549,46 +581,141 @@
             const content = textarea.value;
             console.log('Parsing existing images, content length:', content.length);
             
-            // 匹配格式：![fileId] （支持多种换行符）
-            const imagePattern = /!\[([a-zA-Z0-9_-]+)\](?:\r?\n|\r)?/g;
+            // 匹配格式：📷1、📷2...
+            const imagePattern = /📷(\d+)/g;
             let match;
             
-            // 收集所有图片标记
-            const fileIds = [];
+            // 收集所有图片序号
+            const imageNums = [];
             while ((match = imagePattern.exec(content)) !== null) {
-                const fileId = match[1];
-                console.log('Found image ID:', fileId);
-                fileIds.push(fileId);
+                const num = match[1];
+                console.log('Found image number:', num);
+                imageNums.push(num);
             }
             
-            console.log('Total images found:', fileIds.length);
+            console.log('Total images found:', imageNums.length);
             
-            if (fileIds.length === 0) {
+            if (imageNums.length === 0) {
                 return;
             }
             
-            // 为每个文件ID创建预览（使用 wall-image 路径，不需要认证）
-            fileIds.forEach(function(fileId, index) {
-                const imageUrl = wallImagePath + fileId;
-                console.log('Loading image', index + 1, 'from:', imageUrl);
+            // 从隐藏字段中读取映射关系
+            loadWallImageMapping(imageNums);
+        }
+
+        // 从服务器加载图片映射
+        function loadWallImageMapping(imageNums) {
+            const mapDataElement = document.getElementById('wallImageMapData');
+            if (!mapDataElement) {
+                console.warn('wallImageMapData element not found');
+                return;
+            }
+            
+            let imageMap = {};
+            try {
+                // 从 script 标签的 textContent 读取 JSON
+                const mapJson = mapDataElement.textContent.trim();
+                console.log('Raw map data:', mapJson);
                 
-                // 先验证图片是否可以加载
-                const testImg = new Image();
-                testImg.onload = function() {
-                    console.log('Image loaded successfully:', fileId);
-                    renderImagePreview(fileId, imageUrl);
-                };
-                testImg.onerror = function() {
-                    console.error('Failed to load image:', fileId, 'URL:', imageUrl);
-                };
-                testImg.src = imageUrl;
+                if (mapJson && mapJson !== '{}') {
+                    imageMap = JSON.parse(mapJson);
+                    console.log('Loaded image map from server:', imageMap);
+                }
+            } catch(e) {
+                console.error('Failed to parse image map:', e, 'Raw data:', mapDataElement.textContent);
+                return;
+            }
+            
+            if (Object.keys(imageMap).length === 0) {
+                console.log('No image mapping available');
+                return;
+            }
+            
+            // 为每个图片序号创建预览
+            imageNums.forEach(function(num, index) {
+                const fileId = imageMap[num];
+                if (fileId) {
+                    const imageUrl = wallImagePath + fileId;
+                    const imageKey = '#' + num;
+                    
+                    console.log('Loading image #' + num + ' (fileId: ' + fileId + ') from:', imageUrl);
+                    
+                    // 存储图片信息
+                    imageStore[imageKey] = { url: imageUrl, type: 'server', fileId: fileId };
+                    
+                    // 验证图片是否可以加载
+                    const testImg = new Image();
+                    testImg.onload = function() {
+                        console.log('Image loaded successfully: #' + num);
+                        renderImagePreview(imageKey, imageUrl, false);
+                        
+                        // 设置显示序号
+                        const img = document.querySelector(`img[data-file-id="${fileId}"]`);
+                        if (img) {
+                            img.dataset.displayNum = num;
+                        }
+                    };
+                    testImg.onerror = function() {
+                        console.error('Failed to load image: #' + num, 'URL:', imageUrl);
+                    };
+                    testImg.src = imageUrl;
+                } else {
+                    console.log('No mapping found for image #' + num);
+                }
             });
         }
 
         // 初始解析已有图片
         if (textarea.value) {
-            // 延迟执行，确保 DOM 完全准备好
             setTimeout(parseExistingImages, 300);
+        }
+        
+        // 监听表单提交事件，保存当前所有图片的映射关系
+        const wallForm = document.getElementById('wallForm');
+        if (wallForm) {
+            wallForm.addEventListener('submit', function(e) {
+                console.log('Form submitting, collecting image mappings...');
+                
+                // 构建当前所有图片的映射（displayNum -> fileId）
+                const imageMap = {};
+                
+                // 方法1：从预览图片元素收集
+                const previewImgs = document.querySelectorAll('.previewImage');
+                console.log('Found preview images:', previewImgs.length);
+                previewImgs.forEach(function(img) {
+                    const displayNum = img.dataset.displayNum;
+                    const fileId = img.dataset.fileId;
+                    console.log('Preview img - displayNum:', displayNum, 'fileId:', fileId);
+                    if (displayNum && fileId) {
+                        imageMap[displayNum] = fileId;
+                    }
+                });
+                
+                // 方法2：如果从 DOM 收集的不够，从 imageStore 补充
+                for (const key in imageStore) {
+                    if (imageStore.hasOwnProperty(key)) {
+                        const info = imageStore[key];
+                        if (info.type === 'server' && info.fileId) {
+                            const num = key.replace('#', '');
+                            if (!imageMap[num]) {
+                                console.log('Adding from imageStore:', num, '->', info.fileId);
+                                imageMap[num] = info.fileId;
+                            }
+                        }
+                    }
+                }
+                
+                console.log('Collected image map:', imageMap);
+                
+                // 将映射转换为 JSON 并存入隐藏字段
+                const imageMapInput = document.getElementById('wallImageMap');
+                if (imageMapInput) {
+                    imageMapInput.value = JSON.stringify(imageMap);
+                    console.log('Saved image map to hidden field:', imageMapInput.value);
+                } else {
+                    console.error('wallImageMap input element not found!');
+                }
+            });
         }
     }
 

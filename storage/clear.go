@@ -20,4 +20,5 @@ func (s *Storage) ClearMessages() {
 // ClearWall removes all Wall content from Storage.
 func (s *Storage) ClearWall() {
 	s.WallContent = ""
+	s.WallImageMap = make(map[string]string)
 }

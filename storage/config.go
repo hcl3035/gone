@@ -25,6 +25,10 @@ type Storage struct {
 	// Shared wall content
 	WallContent string `json:"wallContent,omitempty"`
 
+	// Wall image mapping: display number -> file ID
+	// e.g., {"1": "abc123XYZ", "2": "def456UVW"}
+	WallImageMap map[string]string `json:"wallImageMap,omitempty"`
+
 	// Storage content total sizes
 	Sizes `json:"storageSizes,omitempty"`
 }

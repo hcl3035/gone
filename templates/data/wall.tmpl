@@ -15,6 +15,22 @@
           data-wall-image-path="{{ .Paths.WallImage }}">
       {{- .Storage.WallContent -}}
       </textarea>
+      <input type="hidden" name="imageMap" id="wallImageMap" value="">
+      <!-- 存储图片映射供 JavaScript 读取 -->
+      <script type="application/json" id="wallImageMapData">
+      {{- if .Storage.WallImageMap -}}
+      {
+        {{- $first := true -}}
+        {{- range $key, $value := .Storage.WallImageMap -}}
+          {{- if not $first -}},{{ end -}}
+          "{{ $key }}": "{{ $value }}"
+          {{- $first = false -}}
+        {{- end -}}
+      }
+      {{- else -}}
+      {}
+      {{- end -}}
+      </script>
       <br>
       {{ if .Auth.Require.Wall }} {{ template "auth" . }} {{ end }}
       <input class="selectPost"
