@@ -3,6 +3,9 @@
     let imageCounter = 0;
     let currentDate = '';
     
+    // 用户唯一标识（基于时间戳和随机数）
+    let userId = '';
+    
     // 当前查看的图片索引、缩放比例和拖拽状态
     let currentImageIndex = 0;
     let currentScale = 1;
@@ -24,14 +27,17 @@
 
         const box = textarea.closest('.box');
 
+        // 生成用户唯一标识
+        userId = 'user_' + Date.now().toString(36) + '_' + Math.random().toString(36).substr(2, 9);
+        
         // 初始化日期和计数器
         const today = new Date();
         currentDate = today.getFullYear().toString().substr(-2) + 
                       String(today.getMonth() + 1).padStart(2, '0') + 
                       String(today.getDate()).padStart(2, '0');
         
-        // 从 sessionStorage 恢复计数器
-        const savedCounter = sessionStorage.getItem('imgCounter_' + currentDate);
+        // 从 sessionStorage 恢复计数器（按用户隔离）
+        const savedCounter = sessionStorage.getItem('imgCounter_' + userId + '_' + currentDate);
         if (savedCounter) {
             imageCounter = parseInt(savedCounter);
         }
@@ -73,12 +79,13 @@
                     reader.onload = function(event) {
                         const base64String = event.target.result;
                         
-                        // 生成简短ID：日期+序号 (例如: 260115_1)
+                        // 生成简短ID：用户ID+日期+序号 (例如: user_abc_260115_1)
                         imageCounter++;
-                        const imageId = currentDate + '_' + imageCounter;
+                        const imageId = userId.substr(-6) + '_' + currentDate + '_' + imageCounter;
                         
-                        // 保存到 sessionStorage
-                        sessionStorage.setItem('imgCounter_' + currentDate, imageCounter.toString());
+                        // 保存到 sessionStorage（按用户隔离）
+                        sessionStorage.setItem('imgCounter_' + userId + '_' + currentDate, imageCounter.toString());
+                        sessionStorage.setItem(imageId, base64String);
                         
                         // 在光标位置插入超简短的图片标记
                         const startPos = textarea.selectionStart;
@@ -479,7 +486,8 @@
         // 页面加载时，解析已有的图片并显示预览
         function parseExistingImages() {
             const content = textarea.value;
-            const imagePattern = /!\[(\d{6}_\d+)\]\n/g;
+            // 匹配格式：用户ID后6位_日期_序号
+            const imagePattern = /!\[([a-z0-9]{6}_\d{6}_\d+)\]\n/g;
             let match;
             
             // 收集所有图片标记
@@ -493,6 +501,8 @@
                 const base64String = sessionStorage.getItem(imageId);
                 if (base64String) {
                     renderImagePreview(imageId, base64String);
+                } else {
+                    console.warn('Image not found in sessionStorage:', imageId);
                 }
             });
         }
