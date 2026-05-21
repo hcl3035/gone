@@ -36,8 +36,8 @@
                       String(today.getMonth() + 1).padStart(2, '0') + 
                       String(today.getDate()).padStart(2, '0');
         
-        // 从 sessionStorage 恢复计数器（按用户隔离）
-        const savedCounter = sessionStorage.getItem('imgCounter_' + userId + '_' + currentDate);
+        // 从 localStorage 恢复计数器（持久化）
+        const savedCounter = localStorage.getItem('imgCounter_' + currentDate);
         if (savedCounter) {
             imageCounter = parseInt(savedCounter);
         }
@@ -79,20 +79,20 @@
                     reader.onload = function(event) {
                         const base64String = event.target.result;
                         
-                        // 生成简短ID：用户ID+日期+序号 (例如: user_abc_260115_1)
+                        // 生成简短ID：用户ID后6位+日期+序号
                         imageCounter++;
                         const imageId = userId.substr(-6) + '_' + currentDate + '_' + imageCounter;
                         
-                        // 保存到 sessionStorage（按用户隔离）
-                        sessionStorage.setItem('imgCounter_' + userId + '_' + currentDate, imageCounter.toString());
-                        sessionStorage.setItem(imageId, base64String);
+                        // 保存到 localStorage（持久化，跨会话）
+                        localStorage.setItem('imgCounter_' + currentDate, imageCounter.toString());
                         
-                        // 在光标位置插入超简短的图片标记
+                        // 在光标位置插入完整的图片标记（包含Base64）
                         const startPos = textarea.selectionStart;
                         const endPos = textarea.selectionEnd;
                         const text = textarea.value;
                         
-                        const imageMarkdown = '\n![' + imageId + ']\n';
+                        // 格式：![imageId](base64String)
+                        const imageMarkdown = '\n![' + imageId + '](' + base64String + ')\n';
                         
                         textarea.value = text.substring(0, startPos) + imageMarkdown + text.substring(endPos);
                         
@@ -250,8 +250,8 @@
             deleteBtn.innerHTML = '×';
             deleteBtn.title = '删除图片';
             deleteBtn.onclick = function() {
-                // 从 textarea 中移除对应的标记
-                const pattern = new RegExp('\\n!\\[' + imageId + '\\]\\n', 'g');
+                // 从 textarea 中移除对应的标记（包括Base64）
+                const pattern = new RegExp('\\n!\\[' + imageId + '\\]\\([^)]+\\)\\n', 'g');
                 textarea.value = textarea.value.replace(pattern, '\n');
                 
                 // 移除预览图片
@@ -486,48 +486,21 @@
         // 页面加载时，解析已有的图片并显示预览
         function parseExistingImages() {
             const content = textarea.value;
-            // 匹配格式：用户ID后6位_日期_序号
-            const imagePattern = /!\[([a-z0-9]{6}_\d{6}_\d+)\]\n/g;
+            // 匹配格式：![imageId](base64String)
+            const imagePattern = /!\[([a-z0-9]{6}_\d{6}_\d+)\]\((data:image\/[^;]+;base64,[^)]+)\)/g;
             let match;
             
-            // 收集所有图片标记
-            const imageIds = [];
+            // 收集并渲染所有图片
             while ((match = imagePattern.exec(content)) !== null) {
-                imageIds.push(match[1]);
+                const imageId = match[1];
+                const base64String = match[2];
+                renderImagePreview(imageId, base64String);
             }
-            
-            // 从 sessionStorage 获取并渲染图片
-            imageIds.forEach(function(imageId) {
-                const base64String = sessionStorage.getItem(imageId);
-                if (base64String) {
-                    renderImagePreview(imageId, base64String);
-                } else {
-                    console.warn('Image not found in sessionStorage:', imageId);
-                }
-            });
         }
 
         // 初始解析已有图片
         if (textarea.value) {
             setTimeout(parseExistingImages, 100);
-        }
-        
-        // 在表单提交前，保存图片数据到 sessionStorage
-        const form = document.getElementById('wallForm');
-        if (form) {
-            form.addEventListener('submit', function(e) {
-                // 收集所有图片的 Base64 数据并保存到 sessionStorage
-                const previewImgs = document.querySelectorAll('.previewImage');
-                previewImgs.forEach(function(img) {
-                    const imageId = img.dataset.imageId;
-                    const base64Data = img.dataset.base64;
-                    if (imageId && base64Data) {
-                        sessionStorage.setItem(imageId, base64Data);
-                    }
-                });
-                
-                console.log('Saved', previewImgs.length, 'images to sessionStorage');
-            });
         }
     }
 
