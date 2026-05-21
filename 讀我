@@ -1,0 +1,279 @@
+Gone 项目 Wall 功能增强 - 完整修改总结
+📋 修改概述
+为 gone 项目的 wall（共享文本编辑区）添加了以下功能：
+点击复制功能：选中文字后点击自动复制到剪贴板
+响应式宽度：wall textarea 自适应容器宽度，提供更好的编辑体验
+
+📁 修改的文件清单
+1. 新增文件
+assets/wall-copy.js
+用途：实现点击复制功能的外部 JavaScript 文件
+功能特性：
+只在用户选中文字时才触发复制
+支持现代浏览器的 navigator.clipboard API
+兼容旧浏览器的 execCommand 降级方案
+复制成功后显示顶部绿色提示框（1.5秒后消失）
+完整代码：
+function initWallCopy() {
+  var wallTextarea = document.getElementById('wallContent');
+  if (!wallTextarea) return;
+
+  wallTextarea.addEventListener('click', function(e) {
+    if (!this.value) return;
+
+    // 检查是否有选中的文字
+    var selectedText = this.value.substring(this.selectionStart, this.selectionEnd);
+
+    // 只有在有选中文字时才复制
+    if (selectedText) {
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(selectedText)
+          .then(function() {
+            showCopyFeedback(wallTextarea, '已复制选中内容');
+          })
+          .catch(function(err) {
+            console.error('Copy failed:', err);
+          });
+      } else {
+        try {
+          document.execCommand('copy');
+          showCopyFeedback(wallTextarea, '已复制选中内容');
+        } catch (err) {
+          console.error('Copy failed:', err);
+        }
+      }
+    }
+  });
+}
+
+function showCopyFeedback(element, message) {
+  // 保存原始 title
+  var originalTitle = element.title;
+
+  // 显示复制成功提示
+  element.title = message;
+
+  // 创建临时提示元素
+  var tooltip = document.createElement('div');
+  tooltip.textContent = message;
+  tooltip.style.cssText = 'position:fixed;top:20px;left:50%;transform:translateX(-50%);background:#4CAF50;color:white;padding:8px 16px;border-radius:4px;font-size:14px;z-index:10000;box-shadow:0 2px 8px rgba(0,0,0,0.2);';
+  document.body.appendChild(tooltip);
+
+  // 1.5秒后移除提示并恢复 title
+  setTimeout(function() {
+    element.title = originalTitle;
+    if (tooltip.parentNode) {
+      tooltip.parentNode.removeChild(tooltip);
+    }
+  }, 1500);
+}
+
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', initWallCopy);
+} else {
+  initWallCopy();
+}
+2. 修改的文件
+templates/data/wall.tmpl
+修改内容：
+移除了固定的 cols="32" rows="12" 属性，让 CSS 完全控制尺寸
+修复了 ID 冲突问题（form 和 textarea 不能使用相同 ID）
+更新了 title 提示文字
+关键修改：
+<!-- 修改前 -->
+<textarea class="wallContent" cols="32" rows="12" id="wall" ...>
+
+<!-- 修改后 -->
+<textarea class="wallContent" form="wallForm" id="wallContent" ...>
+
+完整文件：
+<!-- wall.tmpl -->
+{{ define "wall" }}
+  <div class="box">
+    <form action="{{ .Paths.Wall }}"
+         enctype="application/x-www-form-urlencoded"
+              id="wallForm"
+          method="post">
+      <textarea class="wallContent"
+                 form="wallForm"
+                   id="wallContent"
+            maxlength="{{ .Limit.WallLimits.LengthChars }}"
+                 name="wall"
+                title="add or edit content (click to copy)"
+                style="cursor: pointer;">
+      {{- .Storage.WallContent -}}
+      </textarea>
+      <br>
+      {{ if .Auth.Require.Wall }} {{ template "auth" . }} {{ end }}
+      <input class="selectPost"
+             title="save contents"
+              type="submit"
+             value="save">
+    </form>
+    <form action="{{ .Paths.Wall }}"
+          method="post"
+           style="display:inline;">
+      <input type="hidden" name="clear" value="true">
+      <button class="selectClear" {{ if not .Storage.WallContent }} disabled {{ end }}
+              title="clear wall"
+               type="submit">clear</button>
+    </form>
+    <form action="{{ .Paths.Wall }}"
+          method="get"
+           style="display:inline;">
+      <input type="hidden" name="download" value="all">
+      <button class="selectDownload" {{ if not .Storage.WallContent }} disabled {{ end }}
+              title="download wall"
+               type="submit">download</button>
+    </form>
+  </div>
+{{ end }}
+templates/data/footer.tmpl
+修改内容：在 </body> 之前添加外部 JS 文件引用
+关键修改：
+<!-- 添加这一行 -->
+<script src="/assets/wall-copy.js"></script>
+完整文件：
+<!-- footer.tmpl -->
+{{ define "footer" }}
+  {{ if .ShowBuild -}}
+  <div class="footer">
+    <div class="message">
+      {{ .Version.id }}
+      <span class="owner">
+        {{- template "version" . }}
+      </span>
+    </div>
+  </div>
+  {{ end }}
+  <script src="/assets/wall-copy.js"></script>
+</body>
+</html>
+{{ end }}
+
+templates/data/csp.tmpl
+修改内容：修改 CSP 策略，允许加载同源脚本
+关键修改：
+- script-src  'none';
++ script-src  'self';
+完整文件：
+<!-- csp.tmpl -->
+{{ define "csp" -}}
+    <meta http-equiv="Content-Security-Policy"
+             content="child-src   'none';
+                      connect-src 'self';
+                      default-src 'none';
+                      frame-src   'none';
+                      object-src  'none';
+                      script-src  'self';
+                      style-src   'self' 'unsafe-inline';">
+{{ end }}
+assets/style.css
+修改内容：添加 .wallContent 样式，使其自适应宽度
+关键修改：
+.wallContent {
+  width: calc(100% - 20px) !important;
+  max-width: calc(100% - 20px) !important;
+  min-height: 300px !important;
+  resize: vertical;
+  margin: 10px !important;
+  padding: 10px !important;
+  display: block;
+  box-sizing: border-box;
+}
+说明：
+width: calc(100% - 20px) - 占满容器宽度减去左右 margin
+min-height: 300px - 最小高度 300px，提供更好的编辑空间
+resize: vertical - 允许用户垂直调整大小
+!important - 确保覆盖全局样式中的默认设置
+
+🔧 技术要点
+1. CSP（内容安全策略）兼容性
+问题：原 CSP 策略 script-src 'none' 禁止所有脚本执行
+解决：改为 script-src 'self'，允许加载同源外部脚本
+优势：保持安全性，同时允许必要的 JavaScript 功能
+2. ID 唯一性
+问题：form 和 textarea 都使用 id="wall" 导致冲突
+解决：form 使用 id="wallForm"，textarea 使用 id="wallContent"
+3. 事件处理
+使用 addEventListener 而非 inline onclick
+检查 document.readyState 确保 DOM 就绪后再绑定事件
+只在有选中文字时触发复制，避免误操作
+4. 剪贴板 API
+优先使用现代 navigator.clipboard.writeText()
+降级到 document.execCommand('copy') 兼容旧浏览器
+包含错误处理和用户反馈
+5. 响应式设计
+移除 HTML 中的固定 cols 和 rows 属性
+使用 CSS 控制尺寸，支持不同屏幕尺寸
+calc() 函数精确计算宽度，考虑 margin 和 padding
+
+✅ 功能验证
+测试步骤
+启动服务
+   go run cmd/main.go -debug
+
+访问页面
+打开浏览器访问 http://localhost:8080
+展开 wall 区域
+测试复制功能
+在 wall textarea 中输入一些文字
+选中部分文字
+点击选中区域
+应该看到顶部绿色提示"已复制选中内容"
+粘贴到其他位置验证
+测试宽度自适应
+wall textarea 应该占满容器宽度
+可以垂直拖动调整高度
+点击 save 后尺寸保持不变
+检查浏览器控制台
+按 F12 打开开发者工具
+Network 标签中 wall-copy.js 状态码应为 200
+Console 标签应无错误
+
+🎯 用户体验改进
+复制功能
+✅ 只复制选中内容，不会误操作
+✅ 视觉反馈清晰（绿色提示框）
+✅ 1.5 秒后自动消失，不干扰操作
+✅ 兼容各种浏览器
+编辑体验
+✅ 更宽的编辑区域，提升可读性
+✅ 可调整高度，适应不同内容长度
+✅ 保存后尺寸不变，保持一致性
+✅ 响应式设计，适配不同屏幕
+
+📝 注意事项
+CSP 策略：修改后允许加载同源脚本，但仍禁止内联脚本，保持较高安全性
+浏览器兼容性：
+现代浏览器：使用 navigator.clipboard API
+旧浏览器：降级到 execCommand
+需要 HTTPS 或 localhost 才能使用 clipboard API
+样式优先级：使用 !important 确保样式生效，因为全局样式中有默认的 margin 和 padding
+Git 提交：如果推送到 GitHub，记得提交所有修改的文件
+
+🚀 部署建议
+本地开发
+# 清除缓存并重新构建
+go clean
+go build -o release/gone.exe cmd/main.go
+
+# 运行
+.\release\gone.exe -debug
+
+生产环境
+# Linux/Mac
+make build
+sudo make install
+
+# Docker
+docker build -t gone .
+docker run -p 8080:8080 gone
+
+📚 相关文档
+Go 官方文档
+CSP 规范
+Clipboard API
+gone 项目 README
+
+最后更新：2026-05-20 修改版本：基于 hcl3035/gone 仓库
