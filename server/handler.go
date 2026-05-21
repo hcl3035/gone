@@ -39,6 +39,11 @@ func getHandler(app *config.App) http.Handler {
 	handle(app.Upload, handlers.Upload(app))
 	handle(app.User, handlers.User(app))
 	handle(app.Wall, handlers.Wall(app))
+	
+	// Wall image handler - no auth required
+	if app.WallImage != "" {
+		mux.HandleFunc(app.WallImage, handlers.WallImage(app))
+	}
 
 	return mux
 }

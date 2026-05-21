@@ -11,7 +11,8 @@
             maxlength="{{ .Limit.WallLimits.LengthChars }}"
                  name="wall"
                 title="add or edit content (select to copy)"
-                style="cursor: pointer;">
+                style="cursor: pointer;"
+          data-wall-image-path="{{ .Paths.WallImage }}">
       {{- .Storage.WallContent -}}
       </textarea>
       <br>

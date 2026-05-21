@@ -3,7 +3,7 @@
     let imageCounter = 0;
     let currentDate = '';
     
-    // 用户唯一标识（基于时间戳和随机数）
+    // 用户唯一标识
     let userId = '';
     
     // 当前查看的图片索引、缩放比例和拖拽状态
@@ -17,6 +17,9 @@
     let startY = 0;
     let translateX = 0;
     let translateY = 0;
+    
+    // 存储已上传图片的映射（fileId -> imageUrl）
+    let uploadedImages = {};
 
     function initWallCopy() {
         const textarea = document.getElementById('wallContent');
@@ -26,6 +29,9 @@
         }
 
         const box = textarea.closest('.box');
+        
+        // 从 textarea 的 data 属性获取 wall image 路径
+        const wallImagePath = textarea.dataset.wallImagePath || '/wall-image/';
 
         // 生成用户唯一标识
         userId = 'user_' + Date.now().toString(36) + '_' + Math.random().toString(36).substr(2, 9);
@@ -36,7 +42,7 @@
                       String(today.getMonth() + 1).padStart(2, '0') + 
                       String(today.getDate()).padStart(2, '0');
         
-        // 从 localStorage 恢复计数器（持久化）
+        // 从 localStorage 恢复计数器
         const savedCounter = localStorage.getItem('imgCounter_' + currentDate);
         if (savedCounter) {
             imageCounter = parseInt(savedCounter);
@@ -74,46 +80,96 @@
                     e.preventDefault();
                     
                     const blob = items[i].getAsFile();
-                    const reader = new FileReader();
                     
-                    reader.onload = function(event) {
-                        const base64String = event.target.result;
+                    // 生成简短ID
+                    imageCounter++;
+                    const imageId = userId.substr(-6) + '_' + currentDate + '_' + imageCounter;
+                    
+                    // 保存到 localStorage
+                    localStorage.setItem('imgCounter_' + currentDate, imageCounter.toString());
+                    
+                    // 先显示临时预览（使用本地 Blob URL）
+                    const tempUrl = URL.createObjectURL(blob);
+                    
+                    // 在光标位置插入图片标记
+                    const startPos = textarea.selectionStart;
+                    const endPos = textarea.selectionEnd;
+                    const text = textarea.value;
+                    
+                    // 统一使用 \n 作为换行符
+                    const imageMarkdown = '\n![' + imageId + ']\n';
+                    
+                    textarea.value = text.substring(0, startPos) + imageMarkdown + text.substring(endPos);
+                    
+                    // 移动光标
+                    const newPos = startPos + imageMarkdown.length;
+                    textarea.setSelectionRange(newPos, newPos);
+                    
+                    // 渲染临时预览
+                    renderImagePreview(imageId, tempUrl);
+                    
+                    showCopyNotification('正在上传图片...');
+                    
+                    // 异步上传到服务器
+                    uploadImageToServer(blob, imageId, function(fileId) {
+                        // 上传成功，更新映射
+                        uploadedImages[imageId] = wallImagePath + fileId;
                         
-                        // 生成简短ID：用户ID后6位+日期+序号
-                        imageCounter++;
-                        const imageId = userId.substr(-6) + '_' + currentDate + '_' + imageCounter;
+                        // 替换 textarea 中的标记为文件ID
+                        const pattern = new RegExp('\\n!\\[' + imageId + '\\]\\n', 'g');
+                        const fileMarkdown = '\n![' + fileId + ']\n';
+                        textarea.value = textarea.value.replace(pattern, fileMarkdown);
                         
-                        // 保存到 localStorage（持久化，跨会话）
-                        localStorage.setItem('imgCounter_' + currentDate, imageCounter.toString());
+                        // 更新预览图片的 src
+                        const previewImg = document.querySelector(`img[data-image-id="${imageId}"]`);
+                        if (previewImg) {
+                            previewImg.src = wallImagePath + fileId;
+                            previewImg.dataset.imageUrl = wallImagePath + fileId;
+                        }
                         
-                        // 在光标位置插入完整的图片标记（包含Base64）
-                        const startPos = textarea.selectionStart;
-                        const endPos = textarea.selectionEnd;
-                        const text = textarea.value;
-                        
-                        // 格式：![imageId](base64String)
-                        const imageMarkdown = '\n![' + imageId + '](' + base64String + ')\n';
-                        
-                        textarea.value = text.substring(0, startPos) + imageMarkdown + text.substring(endPos);
-                        
-                        // 移动光标到图片标记后面
-                        const newPos = startPos + imageMarkdown.length;
-                        textarea.setSelectionRange(newPos, newPos);
-                        
-                        // 渲染图片预览
-                        renderImagePreview(imageId, base64String);
-                        
-                        showCopyNotification('已粘贴图片');
+                        showCopyNotification('图片上传成功');
                         
                         // 触发 input 事件
                         textarea.dispatchEvent(new Event('input', { bubbles: true }));
-                    };
+                    }, function(error) {
+                        console.error('Upload failed:', error);
+                        showCopyNotification('图片上传失败');
+                    });
                     
-                    reader.readAsDataURL(blob);
                     break;
                 }
             }
         });
+
+        // 上传图片到服务器
+        function uploadImageToServer(blob, imageId, onSuccess, onError) {
+            const formData = new FormData();
+            formData.append('file', blob, imageId + '.png');
+            formData.append('downloads', '999'); // 设置较多的下载次数
+            formData.append('duration', '72h'); // 设置3天有效期
+            
+            fetch('/upload', {
+                method: 'POST',
+                body: formData
+            })
+            .then(function(response) {
+                if (!response.ok) {
+                    throw new Error('Upload failed: ' + response.status);
+                }
+                return response.json();
+            })
+            .then(function(data) {
+                // data 是上传结果数组，取第一个文件的ID
+                if (data && data.length > 0 && data[0].id) {
+                    onSuccess(data[0].id);
+                } else {
+                    onError('No file ID returned');
+                }
+            })
+            .catch(function(error) {
+                onError(error);
+            });
+        }
 
         // 监听textarea的resize事件，同步调整box宽度
         let isResizing = false;
@@ -217,7 +273,7 @@
         }
 
         // 渲染图片预览
-        function renderImagePreview(imageId, base64String) {
+        function renderImagePreview(imageId, imageUrl) {
             // 创建或获取预览容器
             let previewContainer = document.getElementById('imagePreviewContainer');
             if (!previewContainer) {
@@ -231,16 +287,16 @@
 
             // 创建图片元素
             const img = document.createElement('img');
-            img.src = base64String;
+            img.src = imageUrl;
             img.alt = 'Image ' + imageId;
             img.title = '点击查看原图';
             img.className = 'previewImage';
             img.dataset.imageId = imageId;
-            img.dataset.base64 = base64String;
+            img.dataset.imageUrl = imageUrl;
             
             // 点击图片查看原图
             img.onclick = function() {
-                openImageModal(base64String, imageId);
+                openImageModal(imageUrl, imageId);
             };
             
             // 添加删除按钮
@@ -250,9 +306,15 @@
             deleteBtn.innerHTML = '×';
             deleteBtn.title = '删除图片';
             deleteBtn.onclick = function() {
-                // 从 textarea 中移除对应的标记（包括Base64）
-                const pattern = new RegExp('\\n!\\[' + imageId + '\\]\\([^)]+\\)\\n', 'g');
-                textarea.value = textarea.value.replace(pattern, '\n');
+                // 从 textarea 中移除对应的标记（支持多种格式）
+                const pattern1 = new RegExp('\\n!\\[' + imageId + '\\]\\n', 'g');
+                const pattern2 = new RegExp('\\n!\\[' + imageId + '\\]\\r\\n', 'g');
+                const pattern3 = new RegExp('\\n!\\[' + imageId + '\\]', 'g');
+                
+                textarea.value = textarea.value
+                    .replace(pattern1, '\n')
+                    .replace(pattern2, '\n')
+                    .replace(pattern3, '\n');
                 
                 // 移除预览图片
                 wrapper.remove();
@@ -275,14 +337,14 @@
         }
 
         // 打开图片模态框
-        function openImageModal(base64String, imageId) {
+        function openImageModal(imageUrl, imageId) {
             // 收集所有图片
             allImages = [];
             const previewImgs = document.querySelectorAll('.previewImage');
             previewImgs.forEach(function(img, index) {
                 allImages.push({
                     id: img.dataset.imageId,
-                    src: img.dataset.base64
+                    src: img.dataset.imageUrl
                 });
                 if (img.dataset.imageId === imageId) {
                     currentImageIndex = index;
@@ -426,7 +488,6 @@
         // 缩小
         function zoomOut() {
             currentScale = Math.max(currentScale - 0.25, 0.25);
-            // 如果缩小到1倍以下，重置位置
             if (currentScale <= 1) {
                 translateX = 0;
                 translateY = 0;
@@ -486,21 +547,48 @@
         // 页面加载时，解析已有的图片并显示预览
         function parseExistingImages() {
             const content = textarea.value;
-            // 匹配格式：![imageId](base64String)
-            const imagePattern = /!\[([a-z0-9]{6}_\d{6}_\d+)\]\((data:image\/[^;]+;base64,[^)]+)\)/g;
+            console.log('Parsing existing images, content length:', content.length);
+            
+            // 匹配格式：![fileId] （支持多种换行符）
+            const imagePattern = /!\[([a-zA-Z0-9_-]+)\](?:\r?\n|\r)?/g;
             let match;
             
-            // 收集并渲染所有图片
+            // 收集所有图片标记
+            const fileIds = [];
             while ((match = imagePattern.exec(content)) !== null) {
-                const imageId = match[1];
-                const base64String = match[2];
-                renderImagePreview(imageId, base64String);
+                const fileId = match[1];
+                console.log('Found image ID:', fileId);
+                fileIds.push(fileId);
             }
+            
+            console.log('Total images found:', fileIds.length);
+            
+            if (fileIds.length === 0) {
+                return;
+            }
+            
+            // 为每个文件ID创建预览（使用 wall-image 路径，不需要认证）
+            fileIds.forEach(function(fileId, index) {
+                const imageUrl = wallImagePath + fileId;
+                console.log('Loading image', index + 1, 'from:', imageUrl);
+                
+                // 先验证图片是否可以加载
+                const testImg = new Image();
+                testImg.onload = function() {
+                    console.log('Image loaded successfully:', fileId);
+                    renderImagePreview(fileId, imageUrl);
+                };
+                testImg.onerror = function() {
+                    console.error('Failed to load image:', fileId, 'URL:', imageUrl);
+                };
+                testImg.src = imageUrl;
+            });
         }
 
         // 初始解析已有图片
         if (textarea.value) {
-            setTimeout(parseExistingImages, 100);
+            // 延迟执行，确保 DOM 完全准备好
+            setTimeout(parseExistingImages, 300);
         }
     }
 

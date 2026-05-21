@@ -272,4 +272,7 @@ type Paths struct {
 
 	// Shared-edit content read and write ("/wall")
 	Wall string `json:"wall,omitempty"`
+
+	// Wall image access ("/wall-image/")
+	WallImage string `json:"wallImage,omitempty"`
 }
