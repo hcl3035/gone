@@ -41,7 +41,14 @@
 
             colorPicker.onchange = function() {
                 State.drawColor = this.value;
+                console.log('颜色已更新:', State.drawColor);
             };
+            
+            // 关键修复：添加input事件，实时响应颜色变化
+            colorPicker.addEventListener('input', function() {
+                State.drawColor = this.value;
+                console.log('颜色实时更新:', State.drawColor);
+            });
 
             brushSize.oninput = function() {
                 State.drawWidth = parseInt(this.value);
@@ -122,6 +129,20 @@
         },
 
         createLayer: function(modal, layerIndex) {
+            console.log('createLayer called with modal:', modal, 'layerIndex:', layerIndex);
+            console.log('modal type:', typeof modal, 'modal.tagName:', modal ? modal.tagName : 'null');
+            
+            // 关键修复：确保modal是DOM元素
+            if (!modal || !modal.querySelector) {
+                console.error('Invalid modal parameter:', modal);
+                // 尝试从全局获取modal
+                modal = document.getElementById('imageModal');
+                if (!modal) {
+                    console.error('Cannot find imageModal');
+                    return null;
+                }
+            }
+            
             const layersContainer = modal.querySelector('.layers-container');
             if (!layersContainer) {
                 console.error('layers-container not found in createLayer');
@@ -188,13 +209,66 @@
             // 获取图片引用（从layers-container内部）
             const img = canvas.parentElement.querySelector('.modal-image');
 
+            // 关键修复：监听窗口resize，重新调整Canvas尺寸
+            const resizeObserver = new ResizeObserver(function(entries) {
+                for (let entry of entries) {
+                    const newWidth = entry.contentRect.width;
+                    const newHeight = entry.contentRect.height;
+                    
+                    // 保存当前Canvas内容
+                    const imageData = canvas.getContext('2d').getImageData(0, 0, canvas.width, canvas.height);
+                    
+                    // 调整Canvas显示尺寸（CSS）
+                    canvas.style.width = newWidth + 'px';
+                    canvas.style.height = newHeight + 'px';
+                    
+                    // 注意：不改变canvas.width/height，保持原始绘图分辨率
+                }
+            });
+            
+            resizeObserver.observe(canvas.parentElement);
+
             canvas.addEventListener('mousedown', function(e) {
+                // 关键修复：如果是文字工具，不处理Canvas绘图，而是显示文字输入框
+                if (State.currentTool === 'text') {
+                    if (window.WallText && window.WallText.showInput) {
+                        window.WallText.showInput(e.clientX, e.clientY);
+                    }
+                    return;
+                }
+                
                 if (!State.isDrawingMode || layerIndex !== State.activeCanvasIndex) return;
 
+                handleDrawStart(e);
+            });
+
+            // 关键修复：添加触摸事件支持
+            canvas.addEventListener('touchstart', function(e) {
+                e.preventDefault();
+                
+                const touch = e.touches[0];
+                if (State.currentTool === 'text') {
+                    if (window.WallText && window.WallText.showInput) {
+                        window.WallText.showInput(touch.clientX, touch.clientY);
+                    }
+                    return;
+                }
+                
+                if (!State.isDrawingMode || layerIndex !== State.activeCanvasIndex) return;
+
+                // 模拟鼠标事件对象
+                const mockEvent = {
+                    clientX: touch.clientX,
+                    clientY: touch.clientY
+                };
+                handleDrawStart(mockEvent);
+            }, { passive: false });
+
+            function handleDrawStart(e) {
                 // 关键修复：直接使用鼠标相对于canvas的位置，考虑缩放
                 const rect = canvas.getBoundingClientRect();
                 
-                console.log('=== MouseDown 调试 ===');
+                console.log('=== DrawStart 调试 ===');
                 console.log('屏幕坐标:', e.clientX, e.clientY);
                 console.log('Canvas rect:', rect);
                 console.log('Canvas 原始尺寸:', canvas.width, 'x', canvas.height);
@@ -215,160 +289,121 @@
                 console.log('计算的原始坐标:', startX.toFixed(2), startY.toFixed(2));
                 console.log('==================');
 
-                if (State.currentTool === 'text') {
-                    window.WallText.showInput(e.clientX, e.clientY);
-                } else if (['arrow', 'rect', 'circle'].includes(State.currentTool)) {
-                    tempCanvas = document.createElement('canvas');
-                    tempCanvas.width = canvas.width;
-                    tempCanvas.height = canvas.height;
-                    tempCtx = tempCanvas.getContext('2d', { willReadFrequently: true });
-                    tempCtx.drawImage(canvas, 0, 0);
-                    State.isDrawing = true;
-                } else if (State.currentTool === 'brush') {
-                    State.isDrawing = true;
-                    self.saveState();
-
-                    const ctx = State.layerCanvases[layerIndex].ctx;
-                    ctx.beginPath();
-                    ctx.moveTo(startX, startY);
-                } else if (State.currentTool === 'straight-line') {
-                    State.isDrawing = true;
-                    self.saveState();
-                    
-                    const ctx = State.layerCanvases[layerIndex].ctx;
-                    brushSnapshot = ctx.getImageData(0, 0, canvas.width, canvas.height);
-                } else if (State.currentTool === 'eraser') {
-                    State.isDrawing = true;
-                    self.saveState();
-
-                    const ctx = State.layerCanvases[layerIndex].ctx;
-                    ctx.beginPath();
-                    ctx.moveTo(startX, startY);
-                }
-            });
-
-            canvas.addEventListener('mousemove', function(e) {
-                if (!State.isDrawing || !State.isDrawingMode || layerIndex !== State.activeCanvasIndex) return;
-
-                // 关键修复：直接使用鼠标相对于canvas的位置
-                const rect = canvas.getBoundingClientRect();
-                
-                // 计算鼠标在canvas显示区域内的相对位置（0-1之间）
-                const relativeX = (e.clientX - rect.left) / rect.width;
-                const relativeY = (e.clientY - rect.top) / rect.height;
-                
-                // 转换为原始图片坐标
-                const x = relativeX * canvas.width;
-                const y = relativeY * canvas.height;
-
-                const ctx = State.layerCanvases[layerIndex].ctx;
-
-                if (State.currentTool === 'brush') {
-                    // 普通画笔：连续曲线，透明度均匀
-                    ctx.strokeStyle = State.drawColor;
-                    ctx.lineWidth = State.drawWidth;
-                    ctx.lineCap = 'round';
-                    ctx.lineJoin = 'round';
-                    ctx.globalAlpha = parseFloat(State.drawOpacity) || 1;
-                    ctx.lineTo(x, y);
-                    ctx.stroke();
-                } else if (State.currentTool === 'straight-line') {
-                    // 直线画笔：恢复快照后绘制直线
-                    if (brushSnapshot) {
-                        ctx.putImageData(brushSnapshot, 0, 0);
-                    }
-                    
-                    ctx.beginPath();
-                    ctx.moveTo(startX, startY);
-                    ctx.strokeStyle = State.drawColor;
-                    ctx.lineWidth = State.drawWidth;
-                    ctx.lineCap = 'round';
-                    ctx.lineJoin = 'round';
-                    ctx.globalAlpha = parseFloat(State.drawOpacity) || 1;
-                    ctx.lineTo(x, y);
-                    ctx.stroke();
-                    ctx.globalAlpha = 1;
-                } else if (State.currentTool === 'eraser') {
-                    ctx.globalCompositeOperation = 'destination-out';
-                    ctx.lineWidth = State.drawWidth * 5;
-                    ctx.lineCap = 'round';
-                    ctx.lineTo(x, y);
-                    ctx.stroke();
-                    ctx.globalCompositeOperation = 'source-over';
-                } else if (['arrow', 'rect', 'circle'].includes(State.currentTool)) {
-                    ctx.clearRect(0, 0, canvas.width, canvas.height);
-                    ctx.putImageData(tempCtx.getImageData(0, 0, canvas.width, canvas.height), 0, 0);
-
-                    ctx.strokeStyle = State.drawColor;
-                    ctx.lineWidth = State.drawWidth;
-                    ctx.globalAlpha = parseFloat(State.drawOpacity) || 1;
-
-                    if (State.currentTool === 'arrow') {
-                        self.drawArrow(ctx, startX, startY, x, y);
-                    } else if (State.currentTool === 'rect') {
-                        ctx.strokeRect(startX, startY, x - startX, y - startY);
-                    } else if (State.currentTool === 'circle') {
-                        const radius = Math.sqrt(Math.pow(x - startX, 2) + Math.pow(y - startY, 2));
-                        ctx.beginPath();
-                        ctx.arc(startX, startY, radius, 0, 2 * Math.PI);
-                        ctx.stroke();
-                    }
-                    
-                    ctx.globalAlpha = 1;
-                }
-            });
-
-            canvas.addEventListener('mouseup', function(e) {
-                if (!State.isDrawing || layerIndex !== State.activeCanvasIndex) return;
-                State.isDrawing = false;
-
-                if (State.currentTool === 'brush' || State.currentTool === 'eraser') {
-                    const ctx = State.layerCanvases[layerIndex].ctx;
-                    ctx.globalAlpha = 1;
-                    ctx.beginPath();
-                }
-                
-                if (State.currentTool === 'straight-line') {
-                    const ctx = State.layerCanvases[layerIndex].ctx;
-                    ctx.globalAlpha = 1;
-                    ctx.beginPath();
-                    brushSnapshot = null;
-                }
-                
+                State.isDrawing = true;
                 self.saveState();
 
-                if (['arrow', 'rect', 'circle'].includes(State.currentTool)) {
-                    // 关键修复：使用相同方法计算终点坐标
-                    const rect = canvas.getBoundingClientRect();
-                    const relativeX = (e.clientX - rect.left) / rect.width;
-                    const relativeY = (e.clientY - rect.top) / rect.height;
-                    const endX = relativeX * canvas.width;
-                    const endY = relativeY * canvas.height;
+                // 创建临时Canvas用于预览
+                tempCanvas = document.createElement('canvas');
+                tempCanvas.width = canvas.width;
+                tempCanvas.height = canvas.height;
+                tempCtx = tempCanvas.getContext('2d');
+                tempCtx.drawImage(canvas, 0, 0);
 
-                    State.shapeAnnotations.push({
-                        layer: layerIndex,
-                        type: State.currentTool,
-                        start: { x: startX, y: startY },
-                        end: { x: endX, y: endY },
-                        color: State.drawColor,
-                        width: State.drawWidth
-                    });
+                // 为直线画笔保存快照
+                if (State.currentTool === 'straight-line' || State.currentTool === 'arrow' || State.currentTool === 'rect' || State.currentTool === 'circle') {
+                    brushSnapshot = canvas.getContext('2d').getImageData(0, 0, canvas.width, canvas.height);
                 }
-            });
 
-            canvas.addEventListener('mouseout', function() {
-                if (State.isDrawing) {
-                    if (State.currentTool === 'brush' || State.currentTool === 'eraser') {
-                        const ctx = State.layerCanvases[layerIndex].ctx;
-                        ctx.globalAlpha = 1;
+                if (State.currentTool === 'brush' || State.currentTool === 'straight-line' || State.currentTool === 'eraser' || State.currentTool === 'arrow' || State.currentTool === 'rect' || State.currentTool === 'circle') {
+                    const ctx = canvas.getContext('2d');
+                    // 关键修复：每次都重新设置绘图属性，确保使用最新状态
+                    ctx.lineCap = 'round';
+                    ctx.lineJoin = 'round';
+                    ctx.lineWidth = State.drawWidth;
+                    ctx.strokeStyle = State.drawColor;
+                    ctx.fillStyle = State.drawColor;
+                    ctx.globalAlpha = State.drawOpacity;
+
+                    if (State.currentTool === 'eraser') {
+                        ctx.globalCompositeOperation = 'destination-out';
+                    } else {
+                        ctx.globalCompositeOperation = 'source-over';
+                    }
+
+                    ctx.beginPath();
+                    ctx.moveTo(startX, startY);
+
+                    // 关键修复：同时监听鼠标和触摸移动事件
+                    canvas.addEventListener('mousemove', draw);
+                    canvas.addEventListener('mouseup', stopDrawing);
+                    canvas.addEventListener('touchmove', handleTouchMove, { passive: false });
+                    canvas.addEventListener('touchend', stopDrawing);
+                }
+            }
+
+            function handleTouchMove(e) {
+                e.preventDefault();
+                const touch = e.touches[0];
+                const mockEvent = {
+                    clientX: touch.clientX,
+                    clientY: touch.clientY
+                };
+                draw(mockEvent);
+            }
+
+            function draw(e) {
+                if (!State.isDrawing) return;
+
+                const rect = canvas.getBoundingClientRect();
+                const relativeX = (e.clientX - rect.left) / rect.width;
+                const relativeY = (e.clientY - rect.top) / rect.height;
+                const currentX = relativeX * canvas.width;
+                const currentY = relativeY * canvas.height;
+
+                const ctx = canvas.getContext('2d');
+
+                if (State.currentTool === 'brush' || State.currentTool === 'eraser') {
+                    ctx.lineTo(currentX, currentY);
+                    ctx.stroke();
+                    ctx.beginPath();
+                    ctx.moveTo(currentX, currentY);
+                } else if (State.currentTool === 'straight-line' || State.currentTool === 'arrow') {
+                    // 恢复快照
+                    ctx.putImageData(brushSnapshot, 0, 0);
+                    ctx.beginPath();
+                    ctx.moveTo(startX, startY);
+                    ctx.lineTo(currentX, currentY);
+                    ctx.stroke();
+                    
+                    // 如果是箭头，绘制箭头头部
+                    if (State.currentTool === 'arrow') {
+                        const angle = Math.atan2(currentY - startY, currentX - startX);
+                        const arrowLength = State.drawWidth * 3;
+                        const arrowAngle = Math.PI / 6;
+                        
                         ctx.beginPath();
+                        ctx.moveTo(currentX, currentY);
+                        ctx.lineTo(
+                            currentX - arrowLength * Math.cos(angle - arrowAngle),
+                            currentY - arrowLength * Math.sin(angle - arrowAngle)
+                        );
+                        ctx.moveTo(currentX, currentY);
+                        ctx.lineTo(
+                            currentX - arrowLength * Math.cos(angle + arrowAngle),
+                            currentY - arrowLength * Math.sin(angle + arrowAngle)
+                        );
+                        ctx.stroke();
                     }
-                    if (State.currentTool === 'straight-line') {
-                        brushSnapshot = null;
-                    }
+                } else if (State.currentTool === 'rect') {
+                    ctx.putImageData(brushSnapshot, 0, 0);
+                    ctx.strokeRect(startX, startY, currentX - startX, currentY - startY);
+                } else if (State.currentTool === 'circle') {
+                    ctx.putImageData(brushSnapshot, 0, 0);
+                    const radius = Math.sqrt(Math.pow(currentX - startX, 2) + Math.pow(currentY - startY, 2));
+                    ctx.beginPath();
+                    ctx.arc(startX, startY, radius, 0, 2 * Math.PI);
+                    ctx.stroke();
                 }
+            }
+
+            function stopDrawing() {
                 State.isDrawing = false;
-            });
+                canvas.removeEventListener('mousemove', draw);
+                canvas.removeEventListener('mouseup', stopDrawing);
+                canvas.removeEventListener('touchmove', handleTouchMove);
+                canvas.removeEventListener('touchend', stopDrawing);
+                brushSnapshot = null;
+            }
         },
 
         drawArrow: function(ctx, fromX, fromY, toX, toY) {

@@ -74,7 +74,7 @@
                     </div>
                     <div class="text-annotations-container" style="position:absolute; top:0; left:0; width:100%; height:100%; pointer-events:none; z-index:100; transform-origin:0 0;">
                     </div>
-                    <div class="text-input-container" style="display:none;">
+                    <div class="text-input-container" style="display:none; position:fixed; z-index:10000;">
                         <textarea class="text-annotation-input" placeholder="输入文字..."></textarea>
                         <button class="text-confirm-btn">确认</button>
                     </div>
@@ -256,7 +256,14 @@
             window.WallText.setupInput(modal);
             window.WallText.makeMovable();
             window.WallLayers.init(modal);
-            window.WallWatermark.setup(modal);
+            
+            console.log('WallWatermark对象:', window.WallWatermark);
+            if (window.WallWatermark && window.WallWatermark.setup) {
+                console.log('调用WallWatermark.setup');
+                window.WallWatermark.setup(modal);
+            } else {
+                console.error('WallWatermark未加载！');
+            }
             
             console.log('Tools setup complete');
 
@@ -265,6 +272,8 @@
                 if (modal.style.display === 'flex') {
                     // 关键修复：如果输入框正在聚焦，禁用所有快捷键
                     const textInput = modal.querySelector('.text-annotation-input');
+                    const textInputContainer = modal.querySelector('.text-input-container');
+                    
                     if (textInput && document.activeElement === textInput) {
                         // 只允许Escape关闭输入框
                         if (e.key === 'Escape') {

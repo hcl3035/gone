@@ -97,8 +97,17 @@
                 locked: false
             });
 
-            const container = modal.querySelector('.layers-container');
-            window.WallDrawing.createLayer(newIndex, container);
+            console.log('=== addLayer 调用前 ===');
+            console.log('modal:', modal);
+            console.log('modal type:', typeof modal, modal ? modal.tagName : 'null');
+            console.log('newIndex:', newIndex);
+            
+            // 关键修复：创建新图层并绑定事件
+            const newLayer = window.WallDrawing.createLayer(modal, newIndex);
+            if (newLayer) {
+                State.layerCanvases[newIndex] = newLayer;
+                window.WallDrawing.bindCanvasEvents(newLayer.canvas, newIndex);
+            }
 
             State.activeCanvasIndex = newIndex;
             window.WallDrawing.enableAllCanvases();
@@ -134,7 +143,8 @@
             State.layerCanvases = [];
 
             State.layers.forEach((layer, index) => {
-                window.WallDrawing.createLayer(index, container);
+                // 关键修复：传递正确的参数给createLayer
+                window.WallDrawing.createLayer(modal, index);
 
                 if (oldCanvases[index] && oldCanvases[index].element) {
                     const newCanvas = State.layerCanvases[index].element;

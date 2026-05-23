@@ -69,11 +69,19 @@
             textInputContainer.style.position = 'fixed';
             textInputContainer.style.left = clientX + 'px';
             textInputContainer.style.top = clientY + 'px';
+            textInputContainer.style.zIndex = '99999';
+            textInputContainer.style.backgroundColor = 'white';
+            textInputContainer.style.padding = '5px';
+            textInputContainer.style.borderRadius = '3px';
+            textInputContainer.style.boxShadow = '0 2px 10px rgba(0,0,0,0.3)';
             
             textInput.value = '';
             
             textInputContainer.dataset.originalX = originalX;
             textInputContainer.dataset.originalY = originalY;
+            
+            console.log('输入框已显示:', textInputContainer.style.display);
+            console.log('输入框位置:', clientX, clientY);
             
             setTimeout(function() {
                 textInput.focus();
@@ -102,21 +110,7 @@
                 opacity: State.drawOpacity
             });
 
-            // 关键修复：直接在Canvas上绘制文字，调整y坐标补偿基线
-            const canvas = State.layerCanvases[State.activeCanvasIndex];
-            if (canvas && canvas.ctx) {
-                const ctx = canvas.ctx;
-                ctx.save();
-                ctx.globalAlpha = State.drawOpacity;
-                ctx.font = fontSize + 'px Arial';
-                ctx.fillStyle = State.drawColor;
-                // 关键修复：y坐标减去fontSize的约1/4，因为fillText的y是基线位置
-                ctx.fillText(text, originalX, originalY + fontSize * 0.75);
-                ctx.restore();
-                
-                window.WallDrawing.saveState();
-            }
-
+            // 关键修复：不再在Canvas上绘制，而是通过refreshTextAnnotations创建DOM元素
             if (window.refreshTextAnnotations) {
                 window.refreshTextAnnotations();
             }
@@ -126,13 +120,114 @@
             const modal = document.getElementById('imageModal');
             if (!modal) return;
 
-            // 关键修复：文字现在直接在Canvas上绘制，不需要HTML元素
-            // 只需要提供刷新函数接口
-            function refreshTextElements() {
-                // 文字已经在Canvas上绘制，不需要额外处理
+            let selectedTextElement = null;
+            let isDraggingText = false;
+            let dragStartX = 0;
+            let dragStartY = 0;
+            let initialLeft = 0;
+            let initialTop = 0;
+
+            // 文字容器在modal-image-container内，与layers-container平级
+            let textContainer = modal.querySelector('.text-annotations-container');
+            if (!textContainer) {
+                textContainer = document.createElement('div');
+                textContainer.className = 'text-annotations-container';
+                textContainer.style.position = 'absolute';
+                textContainer.style.top = '0';
+                textContainer.style.left = '0';
+                textContainer.style.width = '100%';
+                textContainer.style.height = '100%';
+                textContainer.style.pointerEvents = 'none';
+                textContainer.style.zIndex = '100';
+                textContainer.style.transformOrigin = '0 0';
+
+                const container = modal.querySelector('.modal-image-container');
+                container.appendChild(textContainer);
             }
 
+            const self = this;
+
+            function createTextElement(annotation, index) {
+                const div = document.createElement('div');
+                div.className = 'text-annotation-element';
+                div.textContent = annotation.text;
+                div.style.position = 'absolute';
+                div.style.left = annotation.x + 'px';
+                div.style.top = annotation.y + 'px';
+                div.style.fontSize = annotation.size + 'px';
+                div.style.color = annotation.color;
+                div.style.fontFamily = 'Arial';
+                div.style.pointerEvents = 'auto';
+                div.style.cursor = 'move';
+                div.style.userSelect = 'none';
+                div.style.whiteSpace = 'nowrap';
+                div.style.opacity = annotation.opacity || 1;
+                div.style.lineHeight = '1';
+                div.style.margin = '0';
+                div.style.padding = '0';
+                div.dataset.annotationIndex = index;
+
+                return div;
+            }
+
+            function refreshTextElements() {
+                textContainer.innerHTML = '';
+
+                State.textAnnotations.forEach(function(annotation, index) {
+                    if (annotation.layer === State.activeCanvasIndex) {
+                        const elem = createTextElement(annotation, index);
+
+                        elem.addEventListener('mousedown', function(e) {
+                            if (State.currentTool !== 'select' && State.currentTool !== 'text') return;
+
+                            selectedTextElement = elem;
+                            isDraggingText = true;
+                            dragStartX = e.clientX;
+                            dragStartY = e.clientY;
+                            initialLeft = parseFloat(elem.style.left);
+                            initialTop = parseFloat(elem.style.top);
+
+                            e.stopPropagation();
+                            e.preventDefault();
+                        });
+
+                        textContainer.appendChild(elem);
+                    }
+                });
+            }
+
+            document.addEventListener('mousemove', function(e) {
+                if (!isDraggingText || !selectedTextElement) return;
+
+                const deltaX = e.clientX - dragStartX;
+                const deltaY = e.clientY - dragStartY;
+
+                // 考虑缩放比例
+                const scaledDeltaX = deltaX / State.currentScale;
+                const scaledDeltaY = deltaY / State.currentScale;
+
+                const newLeft = initialLeft + scaledDeltaX;
+                const newTop = initialTop + scaledDeltaY;
+
+                selectedTextElement.style.left = newLeft + 'px';
+                selectedTextElement.style.top = newTop + 'px';
+
+                const index = parseInt(selectedTextElement.dataset.annotationIndex);
+                const annotation = State.textAnnotations[index];
+                
+                annotation.x = newLeft;
+                annotation.y = newTop + annotation.size;
+            });
+
+            document.addEventListener('mouseup', function() {
+                if (isDraggingText) {
+                    isDraggingText = false;
+                    selectedTextElement = null;
+                }
+            });
+
             window.refreshTextAnnotations = refreshTextElements;
+            refreshTextElements();
         }
     };
 })();
