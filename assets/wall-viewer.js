@@ -265,6 +265,9 @@
                 console.error('WallWatermark未加载！');
             }
             
+            // 关键修复：添加工具栏拖动功能
+            this.makeToolbarDraggable(modal);
+            
             console.log('Tools setup complete');
 
             // 键盘事件
@@ -427,6 +430,144 @@
             if (modal) {
                 modal.style.display = 'none';
             }
+        },
+
+        makeToolbarDraggable: function(modal) {
+            const toolbar = modal.querySelector('.modal-toolbar');
+            if (!toolbar) return;
+
+            let isDragging = false;
+            let startX, startY, initialLeft, initialTop;
+            let hasBeenDragged = false; // 关键修复：标记是否已经拖动过
+
+            // 鼠标事件
+            toolbar.addEventListener('mousedown', function(e) {
+                // 如果点击的是按钮，不拖动
+                if (e.target.classList.contains('toolbar-btn') || 
+                    e.target.classList.contains('color-picker') ||
+                    e.target.tagName === 'INPUT' ||
+                    e.target.tagName === 'SELECT') {
+                    return;
+                }
+
+                isDragging = true;
+                startX = e.clientX;
+                startY = e.clientY;
+                
+                // 关键修复：首次拖动时，先获取实际位置并设置
+                if (!hasBeenDragged) {
+                    const rect = toolbar.getBoundingClientRect();
+                    toolbar.style.left = rect.left + 'px';
+                    toolbar.style.top = rect.top + 'px';
+                    toolbar.style.transform = 'none';
+                    hasBeenDragged = true;
+                    
+                    // 重新获取位置作为起始点
+                    initialLeft = rect.left;
+                    initialTop = rect.top;
+                } else {
+                    const rect = toolbar.getBoundingClientRect();
+                    initialLeft = rect.left;
+                    initialTop = rect.top;
+                }
+                
+                toolbar.style.cursor = 'grabbing';
+                e.preventDefault();
+            });
+
+            document.addEventListener('mousemove', function(e) {
+                if (!isDragging) return;
+
+                const deltaX = e.clientX - startX;
+                const deltaY = e.clientY - startY;
+                
+                let newLeft = initialLeft + deltaX;
+                let newTop = initialTop + deltaY;
+                
+                // 关键修复：简化的边界检查，允许自由拖动
+                const viewportWidth = window.innerWidth;
+                const viewportHeight = window.innerHeight;
+                const toolbarWidth = toolbar.offsetWidth;
+                const toolbarHeight = toolbar.offsetHeight;
+                
+                // 允许拖动到屏幕边缘外一点点，提供更好的体验
+                newLeft = Math.max(-toolbarWidth / 2, Math.min(newLeft, viewportWidth - toolbarWidth / 2));
+                newTop = Math.max(0, Math.min(newTop, viewportHeight - toolbarHeight));
+                
+                toolbar.style.left = newLeft + 'px';
+                toolbar.style.top = newTop + 'px';
+                toolbar.style.transform = 'none';
+            });
+
+            document.addEventListener('mouseup', function() {
+                if (isDragging) {
+                    isDragging = false;
+                    toolbar.style.cursor = 'move';
+                }
+            });
+
+            // 触摸事件（移动端支持）
+            toolbar.addEventListener('touchstart', function(e) {
+                if (e.target.classList.contains('toolbar-btn') || 
+                    e.target.classList.contains('color-picker') ||
+                    e.target.tagName === 'INPUT' ||
+                    e.target.tagName === 'SELECT') {
+                    return;
+                }
+
+                isDragging = true;
+                const touch = e.touches[0];
+                startX = touch.clientX;
+                startY = touch.clientY;
+                
+                // 关键修复：首次拖动时，先获取实际位置并设置
+                if (!hasBeenDragged) {
+                    const rect = toolbar.getBoundingClientRect();
+                    toolbar.style.left = rect.left + 'px';
+                    toolbar.style.top = rect.top + 'px';
+                    toolbar.style.transform = 'none';
+                    hasBeenDragged = true;
+                    
+                    initialLeft = rect.left;
+                    initialTop = rect.top;
+                } else {
+                    const rect = toolbar.getBoundingClientRect();
+                    initialLeft = rect.left;
+                    initialTop = rect.top;
+                }
+                
+                e.preventDefault();
+            }, { passive: false });
+
+            document.addEventListener('touchmove', function(e) {
+                if (!isDragging) return;
+
+                const touch = e.touches[0];
+                const deltaX = touch.clientX - startX;
+                const deltaY = touch.clientY - startY;
+                
+                let newLeft = initialLeft + deltaX;
+                let newTop = initialTop + deltaY;
+                
+                // 关键修复：简化的边界检查，允许自由拖动
+                const viewportWidth = window.innerWidth;
+                const viewportHeight = window.innerHeight;
+                const toolbarWidth = toolbar.offsetWidth;
+                const toolbarHeight = toolbar.offsetHeight;
+                
+                newLeft = Math.max(-toolbarWidth / 2, Math.min(newLeft, viewportWidth - toolbarWidth / 2));
+                newTop = Math.max(0, Math.min(newTop, viewportHeight - toolbarHeight));
+                
+                toolbar.style.left = newLeft + 'px';
+                toolbar.style.top = newTop + 'px';
+                toolbar.style.transform = 'none';
+                
+                e.preventDefault();
+            }, { passive: false });
+
+            document.addEventListener('touchend', function() {
+                isDragging = false;
+            });
         }
     };
 })();

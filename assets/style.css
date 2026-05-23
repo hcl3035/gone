@@ -194,28 +194,58 @@ select {
   top: 20px;
   left: 50%;
   transform: translateX(-50%);
-  background-color: rgba(0, 0, 0, 0.7);
-  padding: 10px 20px;
-  border-radius: 30px;
+  background-color: rgba(0, 0, 0, 0.85);
+  padding: 10px 15px;
+  border-radius: 15px;
   display: flex;
-  gap: 10px;
+  flex-wrap: wrap;
+  gap: 8px;
   align-items: center;
+  justify-content: center;
   z-index: 10003;
+  max-width: 90vw;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
+  backdrop-filter: blur(10px);
+  cursor: move;
+  user-select: none;
+}
+
+/* 关键修复：小屏幕时改为双栏布局 */
+@media (max-width: 768px) {
+  .modal-toolbar {
+    top: 10px;
+    left: 10px;
+    right: 10px;
+    transform: none;
+    max-width: none;
+    padding: 8px;
+    border-radius: 12px;
+  }
 }
 
 .toolbar-btn {
   background-color: rgba(255, 255, 255, 0.2);
   color: white;
   border: 2px solid rgba(255, 255, 255, 0.4);
-  width: 40px;
-  height: 40px;
+  width: 36px;
+  height: 36px;
   border-radius: 50%;
-  font-size: 20px;
+  font-size: 18px;
   cursor: pointer;
   transition: all 0.2s;
   display: flex;
   align-items: center;
   justify-content: center;
+  flex-shrink: 0;
+}
+
+/* 关键修复：小屏幕时按钮更小 */
+@media (max-width: 768px) {
+  .toolbar-btn {
+    width: 32px;
+    height: 32px;
+    font-size: 16px;
+  }
 }
 
 .toolbar-btn:hover {
