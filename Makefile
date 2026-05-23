@@ -43,7 +43,14 @@ GOTEST    = $(GO) test -trimpath
 SERVICE   = $(APPNAME).service
 
 ASSET_CSS = assets/style.css
-ASSET_JS  = assets/wall-copy.js
+ASSET_JS  = assets/wall-config.js \
+            assets/wall-copy.js \
+            assets/wall-drawing.js \
+            assets/wall-image.js \
+            assets/wall-layers.js \
+            assets/wall-text.js \
+            assets/wall-viewer.js \
+            assets/wall-watermark.js
 SETTINGS  = settings/defaultSettings.json
 
 CONF_DIR ?= /etc/$(APPNAME)
@@ -93,8 +100,11 @@ install: install-assets install-bin \
 install-assets:
 	@sudo install -Dm $(MOD_FILE) $(ASSET_CSS) $(DEST_CSS)
 	@printf "Installed $(DEST_CSS)\n"
-	@sudo install -Dm $(MOD_FILE) $(ASSET_JS) $(DEST_JS)
-	@printf "Installed $(DEST_JS)\n"
+	@for js in $(ASSET_JS); do \
+		basename=$$(basename $$js); \
+		sudo install -Dm $(MOD_FILE) $$js $(CONF_DIR)/assets/$$basename; \
+		printf "Installed $(CONF_DIR)/assets/$$basename\n"; \
+	done
 
 install-bin: build
 	@sudo install -Dm $(MOD_BIN) $(OUT)/$(BINNAME) $(DEST_BIN)
