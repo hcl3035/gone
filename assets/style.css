@@ -400,6 +400,8 @@ select {
   overflow: hidden;
   /* 关键修复：禁用浏览器默认的双指缩放手势 */
   touch-action: none;
+  /* 平滑过渡 */
+  transition: cursor 0.2s ease;
 }
 
 .layers-container {

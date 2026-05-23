@@ -594,11 +594,20 @@
             let initialTranslateY = 0;
             let lastTouchCenter = { x: 0, y: 0 };
             let isPinching = false;
+            
+            // 关键修复：单指平移支持
+            let isPanning = false;
+            let panStartX = 0;
+            let panStartY = 0;
+            let panInitialTranslateX = 0;
+            let panInitialTranslateY = 0;
 
             container.addEventListener('touchstart', function(e) {
                 if (e.touches.length === 2) {
+                    // 双指触摸开始 - 缩放模式
                     e.preventDefault();
                     isPinching = true;
+                    isPanning = false;
                     
                     const touch1 = e.touches[0];
                     const touch2 = e.touches[1];
@@ -616,50 +625,87 @@
                         x: (touch1.clientX + touch2.clientX) / 2,
                         y: (touch1.clientY + touch2.clientY) / 2
                     };
+                } else if (e.touches.length === 1 && !State.isDrawingMode) {
+                    // 关键修复：单指在非绘图模式下可以平移
+                    const tool = State.currentTool;
+                    const canPan = tool === 'hand' || tool === 'select' || State.currentScale > 1;
+                    
+                    if (canPan) {
+                        e.preventDefault();
+                        isPanning = true;
+                        isPinching = false;
+                        
+                        const touch = e.touches[0];
+                        panStartX = touch.clientX;
+                        panStartY = touch.clientY;
+                        panInitialTranslateX = State.translateX;
+                        panInitialTranslateY = State.translateY;
+                        
+                        // 视觉反馈
+                        container.style.cursor = 'grabbing';
+                    }
                 }
             }, { passive: false });
 
             container.addEventListener('touchmove', function(e) {
-                if (!isPinching || e.touches.length !== 2) return;
-                e.preventDefault();
-                
-                const touch1 = e.touches[0];
-                const touch2 = e.touches[1];
-                
-                const currentDistance = Math.hypot(
-                    touch2.clientX - touch1.clientX,
-                    touch2.clientY - touch1.clientY
-                );
-                
-                const scaleChange = currentDistance / initialDistance;
-                let newScale = initialScale * scaleChange;
-                newScale = Math.max(0.25, Math.min(newScale, 5));
-                
-                const currentTouchCenter = {
-                    x: (touch1.clientX + touch2.clientX) / 2,
-                    y: (touch1.clientY + touch2.clientY) / 2
-                };
-                
-                const deltaX = currentTouchCenter.x - lastTouchCenter.x;
-                const deltaY = currentTouchCenter.y - lastTouchCenter.y;
-                
-                State.translateX = initialTranslateX + deltaX;
-                State.translateY = initialTranslateY + deltaY;
-                
-                if (newScale <= 1) {
-                    State.translateX = 0;
-                    State.translateY = 0;
+                if (isPinching && e.touches.length === 2) {
+                    // 双指缩放和平移
+                    e.preventDefault();
+                    
+                    const touch1 = e.touches[0];
+                    const touch2 = e.touches[1];
+                    
+                    const currentDistance = Math.hypot(
+                        touch2.clientX - touch1.clientX,
+                        touch2.clientY - touch1.clientY
+                    );
+                    
+                    const scaleChange = currentDistance / initialDistance;
+                    let newScale = initialScale * scaleChange;
+                    newScale = Math.max(0.25, Math.min(newScale, 5));
+                    
+                    const currentTouchCenter = {
+                        x: (touch1.clientX + touch2.clientX) / 2,
+                        y: (touch1.clientY + touch2.clientY) / 2
+                    };
+                    
+                    const deltaX = currentTouchCenter.x - lastTouchCenter.x;
+                    const deltaY = currentTouchCenter.y - lastTouchCenter.y;
+                    
+                    State.translateX = initialTranslateX + deltaX;
+                    State.translateY = initialTranslateY + deltaY;
+                    
+                    if (newScale <= 1) {
+                        State.translateX = 0;
+                        State.translateY = 0;
+                    }
+                    
+                    State.currentScale = newScale;
+                    lastTouchCenter = currentTouchCenter;
+                    
+                    this.applyTransform();
+                } else if (isPanning && e.touches.length === 1) {
+                    // 关键修复：单指平移
+                    e.preventDefault();
+                    
+                    const touch = e.touches[0];
+                    const deltaX = touch.clientX - panStartX;
+                    const deltaY = touch.clientY - panStartY;
+                    
+                    State.translateX = panInitialTranslateX + deltaX;
+                    State.translateY = panInitialTranslateY + deltaY;
+                    
+                    this.applyTransform();
                 }
-                
-                State.currentScale = newScale;
-                lastTouchCenter = currentTouchCenter;
-                
-                this.applyTransform();
             }.bind(this), { passive: false });
 
             container.addEventListener('touchend', function(e) {
                 if (e.touches.length < 2) {
                     isPinching = false;
+                }
+                if (e.touches.length === 0) {
+                    isPanning = false;
+                    container.style.cursor = '';
                 }
             });
         }
