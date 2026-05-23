@@ -1,3 +1,5 @@
+
+
 // wall-viewer.js - 图片模态框查看器
 (function() {
     'use strict';
@@ -250,6 +252,9 @@
                     self.zoomOut();
                 }
             });
+            
+            // 关键修复：添加多点触控支持（双指缩放和平移）
+            this.setupMultiTouch(imgContainer, layersContainer);
             
             // 绑定标注工具（但不初始化图层）
             window.WallDrawing.setupToolsWithoutInit(modal);
@@ -536,6 +541,10 @@
                     initialTop = rect.top;
                 }
                 
+                // 添加视觉反馈
+                toolbar.style.opacity = '0.8';
+                toolbar.style.transition = 'none';
+                
                 e.preventDefault();
             }, { passive: false });
 
@@ -558,15 +567,100 @@
                 newLeft = Math.max(-toolbarWidth / 2, Math.min(newLeft, viewportWidth - toolbarWidth / 2));
                 newTop = Math.max(0, Math.min(newTop, viewportHeight - toolbarHeight));
                 
-                toolbar.style.left = newLeft + 'px';
-                toolbar.style.top = newTop + 'px';
-                toolbar.style.transform = 'none';
+                // 关键修复：使用requestAnimationFrame优化性能
+                requestAnimationFrame(function() {
+                    toolbar.style.left = newLeft + 'px';
+                    toolbar.style.top = newTop + 'px';
+                    toolbar.style.transform = 'none';
+                });
                 
                 e.preventDefault();
             }, { passive: false });
 
             document.addEventListener('touchend', function() {
-                isDragging = false;
+                if (isDragging) {
+                    isDragging = false;
+                    // 恢复透明度
+                    toolbar.style.opacity = '1';
+                    toolbar.style.transition = 'opacity 0.2s ease';
+                }
+            });
+        },
+
+        setupMultiTouch: function(container, layersContainer) {
+            let initialDistance = 0;
+            let initialScale = 1;
+            let initialTranslateX = 0;
+            let initialTranslateY = 0;
+            let lastTouchCenter = { x: 0, y: 0 };
+            let isPinching = false;
+
+            container.addEventListener('touchstart', function(e) {
+                if (e.touches.length === 2) {
+                    e.preventDefault();
+                    isPinching = true;
+                    
+                    const touch1 = e.touches[0];
+                    const touch2 = e.touches[1];
+                    
+                    initialDistance = Math.hypot(
+                        touch2.clientX - touch1.clientX,
+                        touch2.clientY - touch1.clientY
+                    );
+                    
+                    initialScale = State.currentScale;
+                    initialTranslateX = State.translateX;
+                    initialTranslateY = State.translateY;
+                    
+                    lastTouchCenter = {
+                        x: (touch1.clientX + touch2.clientX) / 2,
+                        y: (touch1.clientY + touch2.clientY) / 2
+                    };
+                }
+            }, { passive: false });
+
+            container.addEventListener('touchmove', function(e) {
+                if (!isPinching || e.touches.length !== 2) return;
+                e.preventDefault();
+                
+                const touch1 = e.touches[0];
+                const touch2 = e.touches[1];
+                
+                const currentDistance = Math.hypot(
+                    touch2.clientX - touch1.clientX,
+                    touch2.clientY - touch1.clientY
+                );
+                
+                const scaleChange = currentDistance / initialDistance;
+                let newScale = initialScale * scaleChange;
+                newScale = Math.max(0.25, Math.min(newScale, 5));
+                
+                const currentTouchCenter = {
+                    x: (touch1.clientX + touch2.clientX) / 2,
+                    y: (touch1.clientY + touch2.clientY) / 2
+                };
+                
+                const deltaX = currentTouchCenter.x - lastTouchCenter.x;
+                const deltaY = currentTouchCenter.y - lastTouchCenter.y;
+                
+                State.translateX = initialTranslateX + deltaX;
+                State.translateY = initialTranslateY + deltaY;
+                
+                if (newScale <= 1) {
+                    State.translateX = 0;
+                    State.translateY = 0;
+                }
+                
+                State.currentScale = newScale;
+                lastTouchCenter = currentTouchCenter;
+                
+                this.applyTransform();
+            }.bind(this), { passive: false });
+
+            container.addEventListener('touchend', function(e) {
+                if (e.touches.length < 2) {
+                    isPinching = false;
+                }
             });
         }
     };

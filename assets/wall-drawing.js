@@ -263,6 +263,10 @@
                 };
                 handleDrawStart(mockEvent);
             }, { passive: false });
+            
+            // 关键修复：添加触摸视觉反馈
+            canvas.style.touchAction = 'none';
+            canvas.style.webkitTapHighlightColor = 'transparent';
 
             function handleDrawStart(e) {
                 // 关键修复：直接使用鼠标相对于canvas的位置，考虑缩放

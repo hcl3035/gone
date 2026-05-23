@@ -237,14 +237,24 @@ select {
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
+  /* 关键修复：移动端优化 */
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
 }
 
-/* 关键修复：小屏幕时按钮更小 */
+/* 关键修复：小屏幕时按钮更大，更易点击 */
 @media (max-width: 768px) {
   .toolbar-btn {
-    width: 32px;
-    height: 32px;
-    font-size: 16px;
+    width: 44px;
+    height: 44px;
+    font-size: 20px;
+    margin: 2px;
+  }
+  
+  /* 触摸反馈效果 */
+  .toolbar-btn:active {
+    transform: scale(0.9);
+    background-color: rgba(255, 255, 255, 0.5);
   }
 }
 
@@ -388,6 +398,8 @@ select {
   justify-content: center;
   align-items: center;
   overflow: hidden;
+  /* 关键修复：禁用浏览器默认的双指缩放手势 */
+  touch-action: none;
 }
 
 .layers-container {
