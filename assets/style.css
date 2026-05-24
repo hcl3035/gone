@@ -1054,3 +1054,32 @@ summary::marker {
   content: "";
   display: none;
 }
+
+/* 关键修复：线段控制点样式 */
+.line-handles-container {
+  pointer-events: none;
+}
+
+.line-handle {
+  position: absolute;
+  border-radius: 50%;
+  background-color: #FF0000;
+  border: 3px solid white;
+  box-shadow: 0 0 8px rgba(0,0,0,0.6);
+  cursor: move;
+  pointer-events: auto;
+  transition: transform 0.2s ease;
+  touch-action: none;
+}
+
+.line-handle:active {
+  transform: scale(1.2);
+}
+
+/* 移动端优化：更大的触摸区域 */
+@media (max-width: 768px) {
+  .line-handle {
+    width: 44px !important;
+    height: 44px !important;
+  }
+}

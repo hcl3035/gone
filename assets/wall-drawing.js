@@ -553,31 +553,33 @@
                 const startHandle = document.createElement('div');
                 startHandle.className = 'line-handle line-handle-start';
                 startHandle.style.position = 'absolute';
-                startHandle.style.width = '16px';
-                startHandle.style.height = '16px';
+                startHandle.style.width = '44px';  // 关键修复：增大触摸区域到44px
+                startHandle.style.height = '44px';
                 startHandle.style.borderRadius = '50%';
                 startHandle.style.backgroundColor = '#FF0000';
                 startHandle.style.border = '3px solid white';
-                startHandle.style.boxShadow = '0 0 4px rgba(0,0,0,0.5)';
+                startHandle.style.boxShadow = '0 0 8px rgba(0,0,0,0.6)';
                 startHandle.style.cursor = 'move';
                 startHandle.style.pointerEvents = 'auto';
-                startHandle.style.left = (currentLine.startX * scaleX - 8) + 'px';
-                startHandle.style.top = (currentLine.startY * scaleY - 8) + 'px';
+                startHandle.style.left = (currentLine.startX * scaleX - 22) + 'px';  // 调整位置
+                startHandle.style.top = (currentLine.startY * scaleY - 22) + 'px';
+                startHandle.style.touchAction = 'none';  // 防止触摸时滚动页面
                 
                 // 创建终点控制点
                 const endHandle = document.createElement('div');
                 endHandle.className = 'line-handle line-handle-end';
                 endHandle.style.position = 'absolute';
-                endHandle.style.width = '16px';
-                endHandle.style.height = '16px';
+                endHandle.style.width = '44px';  // 关键修复：增大触摸区域到44px
+                endHandle.style.height = '44px';
                 endHandle.style.borderRadius = '50%';
                 endHandle.style.backgroundColor = '#FF0000';
                 endHandle.style.border = '3px solid white';
-                endHandle.style.boxShadow = '0 0 4px rgba(0,0,0,0.5)';
+                endHandle.style.boxShadow = '0 0 8px rgba(0,0,0,0.6)';
                 endHandle.style.cursor = 'move';
                 endHandle.style.pointerEvents = 'auto';
-                endHandle.style.left = (currentLine.endX * scaleX - 8) + 'px';
-                endHandle.style.top = (currentLine.endY * scaleY - 8) + 'px';
+                endHandle.style.left = (currentLine.endX * scaleX - 22) + 'px';  // 调整位置
+                endHandle.style.top = (currentLine.endY * scaleY - 22) + 'px';
+                endHandle.style.touchAction = 'none';  // 防止触摸时滚动页面
                 
                 // 添加拖动事件
                 let isDragging = false;
@@ -592,6 +594,60 @@
                     
                     document.addEventListener('mousemove', handleMouseMove);
                     document.addEventListener('mouseup', handleMouseUp);
+                }
+                
+                // 关键修复：添加触摸事件支持
+                function handleTouchStart(e) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    isDragging = true;
+                    dragEndpoint = this.classList.contains('line-handle-start') ? 'start' : 'end';
+                    this.style.transform = 'scale(1.2)';
+                    
+                    document.addEventListener('touchmove', handleTouchMove, { passive: false });
+                    document.addEventListener('touchend', handleTouchEnd);
+                }
+                
+                function handleTouchMove(e) {
+                    if (!isDragging || !currentLine) return;
+                    e.preventDefault();
+                    
+                    const touch = e.touches[0];
+                    const rect = canvas.getBoundingClientRect();
+                    const relativeX = (touch.clientX - rect.left) / rect.width;
+                    const relativeY = (touch.clientY - rect.top) / rect.height;
+                    const newX = relativeX * canvas.width;
+                    const newY = relativeY * canvas.height;
+                    
+                    // 更新线段端点
+                    if (dragEndpoint === 'start') {
+                        currentLine.startX = newX;
+                        currentLine.startY = newY;
+                    } else {
+                        currentLine.endX = newX;
+                        currentLine.endY = newY;
+                    }
+                    
+                    // 重绘线段
+                    redrawLine();
+                    
+                    // 更新控制点位置
+                    const handle = dragEndpoint === 'start' ? startHandle : endHandle;
+                    handle.style.left = (newX * scaleX - 22) + 'px';
+                    handle.style.top = (newY * scaleY - 22) + 'px';
+                }
+                
+                function handleTouchEnd(e) {
+                    if (isDragging) {
+                        isDragging = false;
+                        startHandle.style.transform = 'scale(1)';
+                        endHandle.style.transform = 'scale(1)';
+                        document.removeEventListener('touchmove', handleTouchMove);
+                        document.removeEventListener('touchend', handleTouchEnd);
+                        
+                        // 保存状态到历史
+                        self.saveState();
+                    }
                 }
                 
                 function handleMouseMove(e) {
@@ -636,6 +692,10 @@
                 
                 startHandle.addEventListener('mousedown', handleMouseDown);
                 endHandle.addEventListener('mousedown', handleMouseDown);
+                
+                // 关键修复：添加触摸事件监听器
+                startHandle.addEventListener('touchstart', handleTouchStart, { passive: false });
+                endHandle.addEventListener('touchstart', handleTouchStart, { passive: false });
                 
                 // 添加到容器
                 lineHandlesContainer.appendChild(startHandle);

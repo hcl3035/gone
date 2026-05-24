@@ -188,6 +188,45 @@
             modal.querySelector('.zoom-out').onclick = function() { self.zoomOut(); };
             modal.querySelector('.zoom-reset').onclick = function() { self.resetZoom(); };
             
+            // 关键修复：工具下拉菜单事件处理
+            const dropdownToggle = modal.querySelector('.tool-dropdown-toggle');
+            const dropdownMenu = modal.querySelector('.tool-dropdown-menu');
+            const dropdownItems = modal.querySelectorAll('.tool-dropdown-item');
+            
+            if (dropdownToggle && dropdownMenu) {
+                // 点击切换按钮显示/隐藏下拉菜单
+                dropdownToggle.addEventListener('click', function(e) {
+                    e.stopPropagation();
+                    dropdownMenu.classList.toggle('show');
+                });
+                
+                // 点击下拉菜单项选择工具
+                dropdownItems.forEach(function(item) {
+                    item.addEventListener('click', function(e) {
+                        e.stopPropagation();
+                        
+                        // 更新active状态
+                        dropdownItems.forEach(function(i) { i.classList.remove('active'); });
+                        this.classList.add('active');
+                        
+                        // 触发工具切换
+                        const tool = this.dataset.tool;
+                        const toolBtn = modal.querySelector(`[data-tool="${tool}"]`);
+                        if (toolBtn) {
+                            toolBtn.click();
+                        }
+                        
+                        // 隐藏下拉菜单
+                        dropdownMenu.classList.remove('show');
+                    });
+                });
+                
+                // 点击其他地方关闭下拉菜单
+                document.addEventListener('click', function() {
+                    dropdownMenu.classList.remove('show');
+                });
+            }
+            
             modal.onclick = function(e) {
                 if (e.target === modal) self.close();
             };
@@ -464,9 +503,12 @@
 
             // 鼠标事件
             toolbar.addEventListener('mousedown', function(e) {
-                // 如果点击的是按钮，不拖动
+                // 关键修复：如果点击的是按钮或下拉菜单，不拖动
                 if (e.target.classList.contains('toolbar-btn') || 
                     e.target.classList.contains('color-picker') ||
+                    e.target.classList.contains('tool-dropdown-toggle') ||
+                    e.target.classList.contains('tool-dropdown-item') ||
+                    e.target.closest('.tool-dropdown-menu') ||
                     e.target.tagName === 'INPUT' ||
                     e.target.tagName === 'SELECT') {
                     return;
