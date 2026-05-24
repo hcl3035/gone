@@ -29,7 +29,7 @@
         drawOpacity: 1,
 
         // 图层状态
-        currentTool: 'brush',
+        currentTool: 'straight-line',  // 关键修复：默认使用线段绘制工具
         textAnnotations: [],
         shapeAnnotations: [],
         layers: [{ name: '图层 1', visible: true, locked: false }],

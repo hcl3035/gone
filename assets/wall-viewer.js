@@ -79,8 +79,8 @@
                     <div class="tool-dropdown-container fixed-left">
                         <button class="toolbar-btn tool-dropdown-toggle" title="选择工具">&#128736;</button>
                         <div class="tool-dropdown-menu">
-                            <button class="tool-dropdown-item active" data-tool="brush">&#9999; 画笔</button>
-                            <button class="tool-dropdown-item" data-tool="straight-line">&#128207; 直线</button>
+                            <button class="tool-dropdown-item" data-tool="brush">&#9999; 画笔</button>
+                            <button class="tool-dropdown-item active" data-tool="straight-line">&#128207; 直线</button>
                             <button class="tool-dropdown-item" data-tool="eraser">&#129515; 橡皮擦</button>
                             <button class="tool-dropdown-item" data-tool="text">T 文字</button>
                             <button class="tool-dropdown-item" data-tool="arrow">&#10145; 箭头</button>

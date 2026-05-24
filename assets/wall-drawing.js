@@ -40,16 +40,24 @@
                     // 关键修复：只有切换到非直线/箭头工具时才隐藏线段控制点
                     const isLineTool = State.currentTool === 'straight-line' || State.currentTool === 'arrow';
                     const wasLineTool = previousTool === 'straight-line' || previousTool === 'arrow';
+                    const isSelectTool = State.currentTool === 'select';
                     
-                    if (!isLineTool && wasLineTool) {
-                        // 从直线/箭头工具切换到其他工具，隐藏控制点
+                    if (!isLineTool && !isSelectTool && wasLineTool) {
+                        // 从直线/箭头工具切换到其他工具（非选择），隐藏控制点
                         if (window.hideLineHandles) {
                             window.hideLineHandles();
                         }
-                    } else if (!isLineTool && !wasLineTool) {
-                        // 从其他工具切换到其他工具，也隐藏控制点（如果有的话）
+                    } else if (!isLineTool && !isSelectTool && !wasLineTool) {
+                        // 从其他工具切换到其他工具（非选择、非直线/箭头），也隐藏控制点
                         if (window.hideLineHandles) {
                             window.hideLineHandles();
+                        }
+                    } else if ((isLineTool || isSelectTool) && !wasLineTool && previousTool !== 'select') {
+                        // 关键修复：从其他工具切换到直线/箭头/选择，如果有currentLine，重新显示端点
+                        if (window.showLineHandles && typeof window.showLineHandles === 'function') {
+                            setTimeout(function() {
+                                window.showLineHandles();
+                            }, 100);
                         }
                     }
                     // 如果是从直线切换到箭头或反之，保持控制点显示
@@ -607,37 +615,35 @@
                 const startHandle = document.createElement('div');
                 startHandle.className = 'line-handle line-handle-start';
                 startHandle.style.position = 'absolute';
-                startHandle.style.width = '20px';  // 关键修复：减小到20px
-                startHandle.style.height = '20px';
+                startHandle.style.width = '30px';  // 关键修复：增大到30px，更容易点击
+                startHandle.style.height = '30px';
                 startHandle.style.borderRadius = '50%';
                 startHandle.style.backgroundColor = State.drawColor;  // 关键修复：使用当前线段颜色
                 startHandle.style.border = '2px solid white';
                 startHandle.style.boxShadow = '0 0 6px rgba(0,0,0,0.4)';
                 startHandle.style.cursor = 'move';
                 startHandle.style.pointerEvents = 'auto';
-                startHandle.style.opacity = '0.7';  // 关键修复：半透明效果
-                startHandle.style.left = (currentLine.startX * scaleX - 10) + 'px';  // 调整位置
-                startHandle.style.top = (currentLine.startY * scaleY - 10) + 'px';
+                startHandle.style.opacity = '0.4';  // 关键修复：更加透明
+                startHandle.style.left = (currentLine.startX * scaleX - 15) + 'px';  // 调整位置（半径15px）
+                startHandle.style.top = (currentLine.startY * scaleY - 15) + 'px';
                 startHandle.style.touchAction = 'none';  // 防止触摸时滚动页面
                 
                 // 创建终点控制点
                 const endHandle = document.createElement('div');
                 endHandle.className = 'line-handle line-handle-end';
                 endHandle.style.position = 'absolute';
-                endHandle.style.width = '20px';  // 关键修复：减小到20px
-                endHandle.style.height = '20px';
+                endHandle.style.width = '30px';  // 关键修复：增大到30px，更容易点击
+                endHandle.style.height = '30px';
                 endHandle.style.borderRadius = '50%';
                 endHandle.style.backgroundColor = State.drawColor;  // 关键修复：使用当前线段颜色
                 endHandle.style.border = '2px solid white';
                 endHandle.style.boxShadow = '0 0 6px rgba(0,0,0,0.4)';
                 endHandle.style.cursor = 'move';
                 endHandle.style.pointerEvents = 'auto';
-                endHandle.style.opacity = '0.7';  // 关键修复：半透明效果
-                endHandle.style.left = (currentLine.endX * scaleX - 10) + 'px';  // 调整位置
-                endHandle.style.top = (currentLine.endY * scaleY - 10) + 'px';
+                endHandle.style.opacity = '0.4';  // 关键修复：更加透明
+                endHandle.style.left = (currentLine.endX * scaleX - 15) + 'px';  // 调整位置（半径15px）
+                endHandle.style.top = (currentLine.endY * scaleY - 15) + 'px';
                 endHandle.style.touchAction = 'none';  // 防止触摸时滚动页面
-                
-                // 添加拖动事件
                 let isDragging = false;
                 let dragEndpoint = null;
                 
