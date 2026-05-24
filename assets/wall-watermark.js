@@ -511,6 +511,102 @@
             Utils.showNotification('水印已应用');
 
             modal.querySelector('.watermark-panel').style.display = 'none';
-        }
+        },
+
+        // 关键修复：一键自动水印功能
+        autoApply: function(modal) {
+            const self = this;
+            const autoBtn = modal.querySelector('.auto-watermark');
+            
+            if (!autoBtn) {
+                console.error('找不到自动水印按钮');
+                return;
+            }
+            
+            // 显示处理中状态
+            autoBtn.classList.add('processing');
+            autoBtn.title = '正在获取位置...';
+            Utils.showNotification('🔄 正在获取位置信息...');
+            
+            // 步骤1：读取原水印设置
+            const watermarkPanel = modal.querySelector('.watermark-panel');
+            const enabledCheckbox = watermarkPanel.querySelector('#watermarkEnabled');
+            const locationCheckbox = watermarkPanel.querySelector('#watermarkLocation');
+            
+            // 步骤2：自动设置启用水印
+            if (enabledCheckbox && !enabledCheckbox.checked) {
+                enabledCheckbox.checked = true;
+                State.watermarkConfig.enabled = true;
+            }
+            
+            // 步骤3：选中显示地理位置
+            if (locationCheckbox && !locationCheckbox.checked) {
+                locationCheckbox.checked = true;
+                State.watermarkConfig.showLocation = true;
+            }
+            
+            // 步骤4：自动等待获取当前位置的结果
+            if (!navigator.geolocation) {
+                Utils.showNotification('❌ 浏览器不支持地理定位');
+                autoBtn.classList.remove('processing');
+                autoBtn.title = '一键自动水印';
+                return;
+            }
+            
+            navigator.geolocation.getCurrentPosition(
+                function(position) {
+                    const lat = position.coords.latitude.toFixed(6);
+                    const lng = position.coords.longitude.toFixed(6);
+                    State.currentLocation = { lat, lng };
+                    
+                    Utils.showNotification('✅ 已获取坐标，正在获取地址...');
+                    
+                    // 关键修复：调用反向地理编码API获取地址
+                    self.reverseGeocode(lat, lng, function(address) {
+                        State.currentLocation.address = address;
+                        Utils.showNotification('✅ 位置获取成功，正在应用水印...');
+                        
+                        // 更新预览
+                        self.updatePreview(modal);
+                        
+                        // 步骤5：自动应用水印
+                        setTimeout(function() {
+                            self.apply(modal);
+                            
+                            // 恢复按钮状态
+                            autoBtn.classList.remove('processing');
+                            autoBtn.title = '一键自动水印';
+                            Utils.showNotification('✅ 自动水印应用成功！');
+                        }, 500);
+                    });
+                },
+                function(error) {
+                    let errorMsg = '❌ 获取位置失败: ';
+                    switch(error.code) {
+                        case error.PERMISSION_DENIED:
+                            errorMsg += '用户拒绝授权';
+                            break;
+                        case error.POSITION_UNAVAILABLE:
+                            errorMsg += '位置信息不可用';
+                            break;
+                        case error.TIMEOUT:
+                            errorMsg += '请求超时';
+                            break;
+                        default:
+                            errorMsg += '未知错误';
+                    }
+                    Utils.showNotification(errorMsg);
+                    
+                    // 恢复按钮状态
+                    autoBtn.classList.remove('processing');
+                    autoBtn.title = '一键自动水印';
+                },
+                {
+                    enableHighAccuracy: true,
+                    timeout: 10000,
+                    maximumAge: 0
+                }
+            );
+        },
     };
 })();

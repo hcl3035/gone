@@ -120,6 +120,9 @@
                         <button class="toolbar-btn draw-redo" title="重做">&#8618;</button>
                         <button class="toolbar-btn draw-clear" title="清空">&#128465;</button>
                         
+                        <!-- 关键修复：一键自动水印按钮 -->
+                        <button class="toolbar-btn auto-watermark" title="一键自动水印">&#128167;&#65039;</button>
+                        
                         <!-- 导航和缩放工具 -->
                         <div class="toolbar-separator"></div>
                         <button class="toolbar-btn zoom-in" title="放大">+</button>
@@ -127,9 +130,8 @@
                         <button class="toolbar-btn zoom-reset" title="重置">&#8634;</button>
                         <span class="zoom-level">100%</span>
                         
-                        <!-- 导出功能 -->
+                        <!-- 关键修复：删除导出PDF按钮，只保留下载标注图片 -->
                         <div class="toolbar-separator"></div>
-                        <button class="toolbar-btn export-pdf" title="导出PDF">&#128196;</button>
                         <button class="toolbar-btn download-annotated" title="下载标注图片">&#128190;</button>
                     </div>
                 </div>
@@ -484,6 +486,20 @@
                 window.WallWatermark.setup(modal);
             } else {
                 console.error('WallWatermark未加载！');
+            }
+            
+            // 关键修复：绑定一键自动水印按钮
+            const autoWatermarkBtn = modal.querySelector('.auto-watermark');
+            if (autoWatermarkBtn && window.WallWatermark && window.WallWatermark.autoApply) {
+                console.log('绑定一键自动水印按钮');
+                autoWatermarkBtn.onclick = function() {
+                    console.log('一键自动水印按钮被点击');
+                    window.WallWatermark.autoApply(modal);
+                };
+            } else {
+                console.error('自动水印按钮或autoApply函数未找到');
+                console.log('autoWatermarkBtn:', autoWatermarkBtn);
+                console.log('window.WallWatermark:', window.WallWatermark);
             }
             
             // 关键修复：添加工具栏拖动功能

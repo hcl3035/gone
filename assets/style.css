@@ -15,9 +15,16 @@ body {
   display: flex;
   flex-direction: column;
   font-size: 1em;
-  margin: 1em auto;
+  margin: 0;
   max-width: none;
   width: 100%;
+}
+
+/* 关键修复：在大屏幕上保持居中布局 */
+@media (min-width: 768px) {
+  body {
+    margin: 1em auto;
+  }
 }
 
 .box {
@@ -600,6 +607,33 @@ select {
   box-shadow: 0 0 10px rgba(76, 175, 80, 0.8);
 }
 
+/* 关键修复：一键自动水印按钮特殊样式 */
+.toolbar-btn.auto-watermark {
+  background-color: rgba(33, 150, 243, 0.4);
+  border-color: rgba(33, 150, 243, 0.6);
+  animation: autoWatermarkPulse 2s infinite;
+}
+
+@keyframes autoWatermarkPulse {
+  0%, 100% {
+    box-shadow: 0 0 5px rgba(33, 150, 243, 0.5);
+  }
+  50% {
+    box-shadow: 0 0 15px rgba(33, 150, 243, 0.8);
+  }
+}
+
+.toolbar-btn.auto-watermark:hover {
+  background-color: rgba(33, 150, 243, 0.6);
+  transform: scale(1.15);
+}
+
+.toolbar-btn.auto-watermark.processing {
+  background-color: rgba(255, 193, 7, 0.6);
+  border-color: rgba(255, 193, 7, 0.8);
+  animation: none;
+}
+
 /* 关键修复：水印开关按钮active状态 */
 .toolbar-btn.watermark-toggle.active {
   background-color: rgba(33, 150, 243, 0.6);
@@ -827,37 +861,83 @@ select {
 
 .text-input-container {
   position: fixed;
-  background: rgba(0, 0, 0, 0.8);
-  padding: 10px;
-  border-radius: 8px;
+  background: rgba(0, 0, 0, 0.85);
+  padding: 15px;
+  border-radius: 16px;
   z-index: 10004;
   display: flex;
-  gap: 8px;
-  align-items: center;
+  gap: 10px;
+  align-items: flex-end;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  animation: textInputFadeIn 0.3s ease;
+}
+
+@keyframes textInputFadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 .text-annotation-input {
-  background: white;
+  background: rgba(255, 255, 255, 0.95);
   border: 2px solid #4CAF50;
-  border-radius: 4px;
-  padding: 8px;
+  border-radius: 8px;
+  padding: 12px 15px;
   font-size: 16px;
-  min-width: 200px;
-  resize: vertical;
+  min-width: 250px;
+  max-width: 400px;
+  min-height: 80px;
+  resize: both;
+  color: #333;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+  line-height: 1.5;
+  transition: all 0.2s ease;
+  box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.text-annotation-input:focus {
+  outline: none;
+  border-color: #2196F3;
+  box-shadow: 0 0 0 3px rgba(33, 150, 243, 0.2), inset 0 2px 4px rgba(0, 0, 0, 0.1);
+  background: white;
+}
+
+.text-annotation-input::placeholder {
+  color: #999;
+  font-style: italic;
 }
 
 .text-confirm-btn {
-  background: #4CAF50;
+  background: linear-gradient(135deg, #4CAF50 0%, #45a049 100%);
   color: white;
   border: none;
-  border-radius: 4px;
-  padding: 8px 16px;
+  border-radius: 8px;
+  padding: 12px 24px;
   cursor: pointer;
   font-weight: bold;
+  font-size: 15px;
+  transition: all 0.2s ease;
+  box-shadow: 0 4px 12px rgba(76, 175, 80, 0.3);
+  white-space: nowrap;
+  height: fit-content;
 }
 
 .text-confirm-btn:hover {
-  background: #45a049;
+  background: linear-gradient(135deg, #45a049 0%, #3d8b40 100%);
+  transform: translateY(-2px);
+  box-shadow: 0 6px 16px rgba(76, 175, 80, 0.4);
+}
+
+.text-confirm-btn:active {
+  transform: translateY(0);
+  box-shadow: 0 2px 8px rgba(76, 175, 80, 0.3);
 }
 
 .layer-panel {
