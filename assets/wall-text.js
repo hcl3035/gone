@@ -411,7 +411,11 @@
                                 navigator.vibrate([30, 50, 30]);
                             }
                             
+                            // 关键修复：阻止默认行为和事件传播，防止图片被拖动
                             e.stopPropagation();
+                            if (e.cancelable) {
+                                e.preventDefault();
+                            }
                         }, { passive: false });
                         
                         elem.addEventListener('touchmove', function(e) {
@@ -460,7 +464,8 @@
                                 annotation.y = newTop + annotation.size;
                             }
                             
-                            // 只在事件可取消时才调用 preventDefault
+                            // 关键修复：始终阻止默认行为，防止图片被拖动
+                            e.stopPropagation();
                             if (e.cancelable) {
                                 e.preventDefault();
                             }
