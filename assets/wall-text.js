@@ -316,8 +316,7 @@
                         const elem = createTextElement(annotation, index);
 
                         // 鼠标事件（桌面端）
-                        let mouseTimer1 = null;  // 1秒定时器
-                        let mouseTimer2 = null;  // 2秒定时器
+                        let mouseTimer = null;  // 1秒定时器
                         let isMouseLongPress = false;
                         let mouseStartX = 0;
                         let mouseStartY = 0;
@@ -337,7 +336,7 @@
                                 isMouseLongPress = false;
                                 
                                 // 1秒定时器 - 修改模式
-                                mouseTimer1 = setTimeout(function() {
+                                mouseTimer = setTimeout(function() {
                                     isMouseLongPress = true;
                                     // 振动反馈（3次短振）
                                     if (navigator.vibrate) {
@@ -350,20 +349,6 @@
                                     // 显示输入框（修改模式）
                                     showEditInput({clientX: mouseStartX, clientY: mouseStartY}, index, true);
                                 }, 1000);
-                                
-                                // 2秒定时器 - 清空模式
-                                mouseTimer2 = setTimeout(function() {
-                                    isEditMode = false;
-                                    // 振动反馈（5次振动）
-                                    if (navigator.vibrate) {
-                                        navigator.vibrate([50, 30, 50, 30, 50]);
-                                    }
-                                    // 视觉反馈：再次放大
-                                    elem.style.transform = 'scale(1.25)';
-                                    
-                                    // 显示输入框（清空模式）
-                                    showEditInput({clientX: mouseStartX, clientY: mouseStartY}, index, false);
-                                }, 2000);
                             }
 
                             selectedTextElement = elem;
@@ -386,16 +371,14 @@
                                 );
                                 
                                 if (moveDistance > 10) {
-                                    clearTimeout(mouseTimer1);
-                                    clearTimeout(mouseTimer2);
+                                    clearTimeout(mouseTimer);
                                     isMouseLongPress = false;
                                 }
                             }
                         });
                         
                         elem.addEventListener('mouseup', function(e) {
-                            clearTimeout(mouseTimer1);
-                            clearTimeout(mouseTimer2);
+                            clearTimeout(mouseTimer);
                             
                             if (isMouseLongPress) {
                                 // 恢复文字大小
@@ -415,11 +398,9 @@
                             e.stopPropagation();
                         });
 
-                        // 关键修复：长按文字显示输入框（1秒修改，2秒清空）
-                        let touchTimer1 = null;  // 1秒定时器
-                        let touchTimer2 = null;  // 2秒定时器
+                        // 关键修复：长按文字显示输入框（1秒修改）
+                        let touchTimer = null;  // 1秒定时器
                         let isLongPress = false;
-                        let isEditMode = false;  // true=修改模式，false=清空模式
                         let touchStartX = 0;
                         let touchStartY = 0;
                         let hasMoved = false;
@@ -431,13 +412,11 @@
                             touchStartX = touch.clientX;
                             touchStartY = touch.clientY;
                             isLongPress = false;
-                            isEditMode = false;
                             hasMoved = false;
                             
                             // 1秒定时器 - 修改模式
-                            touchTimer1 = setTimeout(function() {
+                            touchTimer = setTimeout(function() {
                                 isLongPress = true;
-                                isEditMode = true;
                                 // 振动反馈（3次短振）
                                 if (navigator.vibrate) {
                                     navigator.vibrate([30, 50, 30]);
@@ -449,20 +428,6 @@
                                 // 显示输入框（修改模式）
                                 showEditInput(touch, index, true);
                             }, 1000);
-                            
-                            // 2秒定时器 - 清空模式
-                            touchTimer2 = setTimeout(function() {
-                                isEditMode = false;
-                                // 振动反馈（5次振动）
-                                if (navigator.vibrate) {
-                                    navigator.vibrate([50, 30, 50, 30, 50]);
-                                }
-                                // 视觉反馈：再次放大
-                                elem.style.transform = 'scale(1.25)';
-                                
-                                // 显示输入框（清空模式）
-                                showEditInput(touch, index, false);
-                            }, 2000);
                             
                             e.stopPropagation();
                         }, { passive: false });
@@ -477,8 +442,7 @@
                                 );
                                 
                                 if (moveDistance > 10) {
-                                    clearTimeout(touchTimer1);
-                                    clearTimeout(touchTimer2);
+                                    clearTimeout(touchTimer);
                                     hasMoved = true;
                                 }
                                 return;
@@ -509,8 +473,7 @@
                         }, { passive: false });
                         
                         elem.addEventListener('touchend', function(e) {
-                            clearTimeout(touchTimer1);
-                            clearTimeout(touchTimer2);
+                            clearTimeout(touchTimer);
                             
                             if (isLongPress) {
                                 // 恢复文字大小
