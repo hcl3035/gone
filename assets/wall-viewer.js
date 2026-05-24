@@ -42,6 +42,23 @@
             modal.className = 'imageModal';
             modal.innerHTML = `
                 <div class="modal-toolbar">
+                    <!-- 关键修复：小屏幕时的工具选择下拉菜单 -->
+                    <div class="tool-dropdown-container" style="display: none;">
+                        <button class="toolbar-btn tool-dropdown-toggle" title="选择工具">🔧</button>
+                        <div class="tool-dropdown-menu">
+                            <button class="tool-dropdown-item" data-tool="hand">✋ 平移</button>
+                            <button class="tool-dropdown-item" data-tool="select">👆 选择</button>
+                            <button class="tool-dropdown-item active" data-tool="brush">✏️ 画笔</button>
+                            <button class="tool-dropdown-item" data-tool="straight-line">📏 直线</button>
+                            <button class="tool-dropdown-item" data-tool="eraser">🧽 橡皮擦</button>
+                            <button class="tool-dropdown-item" data-tool="text">T 文字</button>
+                            <button class="tool-dropdown-item" data-tool="arrow">➡️ 箭头</button>
+                            <button class="tool-dropdown-item" data-tool="rect">⬜ 矩形</button>
+                            <button class="tool-dropdown-item" data-tool="circle">⭕ 圆形</button>
+                        </div>
+                    </div>
+                    
+                    <!-- 原有工具按钮（大屏幕时显示） -->
                     <button class="toolbar-btn zoom-in" title="放大">+</button>
                     <button class="toolbar-btn zoom-out" title="缩小">−</button>
                     <button class="toolbar-btn zoom-reset" title="重置">⟲</button>
@@ -51,7 +68,7 @@
                     <button class="toolbar-btn tool-select" title="选择/移动" data-tool="select">👆</button>
                     <button class="toolbar-btn tool-brush active" title="画笔" data-tool="brush">✏️</button>
                     <button class="toolbar-btn tool-straight-line" title="直线画笔" data-tool="straight-line">📏</button>
-                    <button class="toolbar-btn tool-eraser" title="橡皮擦" data-tool="eraser"></button>
+                    <button class="toolbar-btn tool-eraser" title="橡皮擦" data-tool="eraser">🧽</button>
                     <button class="toolbar-btn tool-text" title="文字" data-tool="text">T</button>
                     <button class="toolbar-btn tool-arrow" title="箭头" data-tool="arrow">➡️</button>
                     <button class="toolbar-btn tool-rect" title="矩形" data-tool="rect">⬜</button>

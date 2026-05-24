@@ -137,14 +137,44 @@
 
         rebuildCanvases: function(modal) {
             const container = modal.querySelector('.layers-container');
+            
+            // 关键修复：保存图片和其他非canvas元素
+            const img = container.querySelector('.modal-image');
+            const textAnnotationsContainer = container.querySelector('.text-annotations-container');
+            const textInputContainer = container.querySelector('.text-input-container');
+            
+            // 清空容器
             container.innerHTML = '';
+            
+            // 关键修复：恢复图片和其他元素
+            if (img) {
+                container.appendChild(img);
+            }
+            if (textAnnotationsContainer) {
+                container.appendChild(textAnnotationsContainer);
+            }
+            if (textInputContainer) {
+                container.appendChild(textInputContainer);
+            }
 
             const oldCanvases = [...State.layerCanvases];
             State.layerCanvases = [];
 
             State.layers.forEach((layer, index) => {
                 // 关键修复：传递正确的参数给createLayer
-                window.WallDrawing.createLayer(modal, index);
+                const newLayer = window.WallDrawing.createLayer(modal, index);
+                
+                // 关键修复：检查createLayer是否成功
+                if (!newLayer) {
+                    console.error('Failed to create layer', index);
+                    return;
+                }
+                
+                // 关键修复：将新图层添加到State.layerCanvases数组
+                State.layerCanvases[index] = newLayer;
+                
+                // 关键修复：绑定Canvas事件
+                window.WallDrawing.bindCanvasEvents(newLayer.canvas, index);
 
                 if (oldCanvases[index] && oldCanvases[index].element) {
                     const newCanvas = State.layerCanvases[index].element;
