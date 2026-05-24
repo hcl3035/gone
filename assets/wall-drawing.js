@@ -361,7 +361,15 @@
                 
                 if (!State.isDrawingMode || layerIndex !== State.activeCanvasIndex) return;
                 
-                // 关键修复：开始绘制新线段时，隐藏旧的端点
+                // 关键修复：开始绘制新线段时，清除旧的线段状态和端点
+                // 清除旧的线段状态
+                currentLine = null;
+                // 清除旧的端点容器
+                if (lineHandlesContainer) {
+                    lineHandlesContainer.remove();
+                    lineHandlesContainer = null;
+                }
+                // 也调用全局的隐藏函数（如果有）
                 if ((State.currentTool === 'straight-line' || State.currentTool === 'arrow') && window.hideLineHandles) {
                     window.hideLineHandles();
                 }
@@ -383,6 +391,10 @@
                 // 转换为原始图片坐标
                 startX = relativeX * canvas.width;
                 startY = relativeY * canvas.height;
+                
+                // 关键修复：初始化终点为起点，避免使用上一次绘制的终点坐标
+                lastDrawEndX = startX;
+                lastDrawEndY = startY;
 
                 console.log('计算的原始坐标:', startX.toFixed(2), startY.toFixed(2));
                 console.log('==================');
@@ -489,12 +501,20 @@
                 } else if (State.currentTool === 'rect') {
                     ctx.putImageData(brushSnapshot, 0, 0);
                     ctx.strokeRect(startX, startY, currentX - startX, currentY - startY);
+                    
+                    // 关键修复：记录终点坐标，用于stopDrawing判断是否有效绘制
+                    lastDrawEndX = currentX;
+                    lastDrawEndY = currentY;
                 } else if (State.currentTool === 'circle') {
                     ctx.putImageData(brushSnapshot, 0, 0);
                     const radius = Math.sqrt(Math.pow(currentX - startX, 2) + Math.pow(currentY - startY, 2));
                     ctx.beginPath();
                     ctx.arc(startX, startY, radius, 0, 2 * Math.PI);
                     ctx.stroke();
+                    
+                    // 关键修复：记录终点坐标，用于stopDrawing判断是否有效绘制
+                    lastDrawEndX = currentX;
+                    lastDrawEndY = currentY;
                 }
             }
 
@@ -505,29 +525,46 @@
                 canvas.removeEventListener('touchmove', handleTouchMove);
                 canvas.removeEventListener('touchend', stopDrawing);
                 
-                // 关键修复：绘制完直线或箭头后，只有在有实际拖动时才显示控制点
-                if ((State.currentTool === 'straight-line' || State.currentTool === 'arrow') && !isEditingLine) {
+                const ctx = canvas.getContext('2d');
+                
+                // 关键修复：对于线段/箭头/矩形/圆形工具，检查是否有实际拖动
+                if ((State.currentTool === 'straight-line' || State.currentTool === 'arrow' || 
+                     State.currentTool === 'rect' || State.currentTool === 'circle') && !isEditingLine) {
                     // 计算起点和终点的距离
                     const distance = Math.sqrt(
                         Math.pow(lastDrawEndX - startX, 2) + 
                         Math.pow(lastDrawEndY - startY, 2)
                     );
                     
-                    // 只有当距离大于5px时，才认为是有效线段，显示控制点
+                    // 只有当距离大于5px时，才认为是有效绘制
                     if (distance > 5) {
-                        currentLine = {
-                            startX: startX,
-                            startY: startY,
-                            endX: lastDrawEndX,
-                            endY: lastDrawEndY,
-                            tool: State.currentTool
-                        };
-                        
-                        // 关键修复：使用brushSnapshot作为干净快照（绘制前的状态）
-                        cleanSnapshot = brushSnapshot;
-                        
-                        // 关键修复：绘制完成后自动显示控制点，方便立即调整
-                        showLineHandles();
+                        // 有效线段，显示控制点（如果是直线或箭头）
+                        if (State.currentTool === 'straight-line' || State.currentTool === 'arrow') {
+                            currentLine = {
+                                startX: startX,
+                                startY: startY,
+                                endX: lastDrawEndX,
+                                endY: lastDrawEndY,
+                                tool: State.currentTool
+                            };
+                            
+                            // 使用brushSnapshot作为干净快照（绘制前的状态）
+                            cleanSnapshot = brushSnapshot;
+                            
+                            // 绘制完成后自动显示控制点，方便立即调整
+                            showLineHandles();
+                        }
+                    } else {
+                        // 关键修复：点击（无拖动），恢复Canvas到绘制前的状态
+                        if (brushSnapshot) {
+                            ctx.putImageData(brushSnapshot, 0, 0);
+                        }
+                        // 清除currentLine和端点
+                        currentLine = null;
+                        if (lineHandlesContainer) {
+                            lineHandlesContainer.remove();
+                            lineHandlesContainer = null;
+                        }
                     }
                 }
                 
