@@ -208,6 +208,9 @@ select {
   backdrop-filter: blur(10px);
   cursor: move;
   user-select: none;
+  /* 关键修复：限定最多两行，但不裁剪下拉菜单 */
+  max-height: 120px;
+  overflow: visible;
 }
 
 /* 大屏幕时隐藏下拉菜单 */
@@ -220,6 +223,8 @@ select {
   display: flex;
   position: relative;
   margin-right: 8px;
+  /* 关键修复：确保下拉菜单不被裁剪 */
+  overflow: visible;
 }
 
 /* 关键修复：小屏幕时改为下拉菜单 */
@@ -232,10 +237,14 @@ select {
     max-width: none;
     padding: 8px;
     border-radius: 12px;
+    /* 小屏幕时也限定两行 */
+    max-height: 140px;
   }
   
-  /* 小屏幕时隐藏原有的工具按钮 */
-  .toolbar-btn[data-tool],
+  /* 小屏幕时隐藏原有的工具按钮（但保留平移和选择） */
+  .toolbar-btn.zoom-in,
+  .toolbar-btn.zoom-out,
+  .toolbar-btn.zoom-reset,
   .color-picker,
   .brush-size,
   .opacity-slider,
@@ -311,6 +320,25 @@ select {
   transform: scale(0.98);
 }
 
+/* 关键修复：下拉菜单中的特殊按钮样式 */
+.tool-dropdown-item.layer-manager-item,
+.tool-dropdown-item.watermark-settings-item {
+  background-color: rgba(255, 255, 255, 0.1);
+  font-weight: bold;
+}
+
+.tool-dropdown-item.layer-manager-item:hover,
+.tool-dropdown-item.watermark-settings-item:hover {
+  background-color: rgba(33, 150, 243, 0.4);
+}
+
+/* 关键修复：下拉菜单分隔符 */
+.dropdown-separator {
+  height: 1px;
+  background-color: rgba(255, 255, 255, 0.3);
+  margin: 8px 16px;
+}
+
 .toolbar-btn {
   background-color: rgba(255, 255, 255, 0.2);
   color: white;
@@ -355,6 +383,67 @@ select {
   background-color: rgba(76, 175, 80, 0.6);
   border-color: #4CAF50;
   box-shadow: 0 0 10px rgba(76, 175, 80, 0.8);
+}
+
+/* 关键修复：水印开关按钮active状态 */
+.toolbar-btn.watermark-toggle.active {
+  background-color: rgba(33, 150, 243, 0.6);
+  border-color: #2196F3;
+  box-shadow: 0 0 10px rgba(33, 150, 243, 0.8);
+}
+
+/* 关键修复：水印Switch开关样式 */
+.watermark-switch {
+  position: relative;
+  display: inline-block;
+  width: 50px;
+  height: 28px;
+  margin: 0 5px;
+  cursor: pointer;
+}
+
+.watermark-switch input {
+  opacity: 0;
+  width: 0;
+  height: 0;
+}
+
+.watermark-switch-slider {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(255, 255, 255, 0.3);
+  border: 2px solid rgba(255, 255, 255, 0.4);
+  border-radius: 28px;
+  transition: all 0.3s;
+}
+
+.watermark-switch-slider:before {
+  position: absolute;
+  content: "";
+  height: 20px;
+  width: 20px;
+  left: 2px;
+  bottom: 2px;
+  background-color: white;
+  border-radius: 50%;
+  transition: all 0.3s;
+}
+
+.watermark-switch input:checked + .watermark-switch-slider {
+  background-color: rgba(76, 175, 80, 0.6);
+  border-color: #4CAF50;
+  box-shadow: 0 0 10px rgba(76, 175, 80, 0.8);
+}
+
+.watermark-switch input:checked + .watermark-switch-slider:before {
+  transform: translateX(22px);
+}
+
+.watermark-switch:active .watermark-switch-slider {
+  box-shadow: 0 0 15px rgba(76, 175, 80, 1);
 }
 
 .toolbar-separator {

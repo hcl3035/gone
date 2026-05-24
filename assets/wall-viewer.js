@@ -42,48 +42,43 @@
             modal.className = 'imageModal';
             modal.innerHTML = `
                 <div class="modal-toolbar">
-                    <!-- 关键修复：工具选择下拉菜单（所有屏幕尺寸都显示） -->
+                    <!-- 关键修复：绘图工具在下拉菜单内 -->
                     <div class="tool-dropdown-container">
-                        <button class="toolbar-btn tool-dropdown-toggle" title="选择工具">🔧</button>
+                        <button class="toolbar-btn tool-dropdown-toggle" title="选择工具">&#128736;</button>
                         <div class="tool-dropdown-menu">
-                            <button class="tool-dropdown-item" data-tool="hand">✋ 平移</button>
-                            <button class="tool-dropdown-item" data-tool="select">👆 选择</button>
-                            <button class="tool-dropdown-item active" data-tool="brush">✏️ 画笔</button>
-                            <button class="tool-dropdown-item" data-tool="straight-line">📏 直线</button>
-                            <button class="tool-dropdown-item" data-tool="eraser">🧽 橡皮擦</button>
+                            <button class="tool-dropdown-item active" data-tool="brush">&#9999; 画笔</button>
+                            <button class="tool-dropdown-item" data-tool="straight-line">&#128207; 直线</button>
+                            <button class="tool-dropdown-item" data-tool="eraser">&#129515; 橡皮擦</button>
                             <button class="tool-dropdown-item" data-tool="text">T 文字</button>
-                            <button class="tool-dropdown-item" data-tool="arrow">➡️ 箭头</button>
-                            <button class="tool-dropdown-item" data-tool="rect">⬜ 矩形</button>
-                            <button class="tool-dropdown-item" data-tool="circle">⭕ 圆形</button>
+                            <button class="tool-dropdown-item" data-tool="arrow">&#10145; 箭头</button>
+                            <button class="tool-dropdown-item" data-tool="rect">&#9634; 矩形</button>
+                            <button class="tool-dropdown-item" data-tool="circle">&#11093; 圆形</button>
+                            <div class="dropdown-separator"></div>
+                            <div class="dropdown-separator"></div>
+                            <button class="tool-dropdown-item layer-manager-item" id="dropdownLayerManager">&#128218; 图层管理</button>
+                            <button class="tool-dropdown-item watermark-settings-item" id="dropdownWatermarkSettings">&#128167; 水印设置</button>
                         </div>
                     </div>
                     
-                    <!-- 原有工具按钮（大屏幕时显示） -->
+                    <!-- 第一行：导航和常用工具 -->
                     <button class="toolbar-btn zoom-in" title="放大">+</button>
-                    <button class="toolbar-btn zoom-out" title="缩小">−</button>
-                    <button class="toolbar-btn zoom-reset" title="重置">⟲</button>
+                    <button class="toolbar-btn zoom-out" title="缩小">&minus;</button>
+                    <button class="toolbar-btn zoom-reset" title="重置">&#8634;</button>
                     <span class="zoom-level">100%</span>
-                    <div class="toolbar-separator"></div>
-                    <button class="toolbar-btn tool-hand" title="平移/抓手" data-tool="hand">✋</button>
-                    <button class="toolbar-btn tool-select" title="选择/移动" data-tool="select">👆</button>
-                    <button class="toolbar-btn tool-brush active" title="画笔" data-tool="brush">✏️</button>
-                    <button class="toolbar-btn tool-straight-line" title="直线画笔" data-tool="straight-line">📏</button>
-                    <button class="toolbar-btn tool-eraser" title="橡皮擦" data-tool="eraser">🧽</button>
-                    <button class="toolbar-btn tool-text" title="文字" data-tool="text">T</button>
-                    <button class="toolbar-btn tool-arrow" title="箭头" data-tool="arrow">➡️</button>
-                    <button class="toolbar-btn tool-rect" title="矩形" data-tool="rect">⬜</button>
-                    <button class="toolbar-btn tool-circle" title="圆形" data-tool="circle">⭕</button>
+                    <button class="toolbar-btn tool-hand" title="平移/抓手" data-tool="hand">&#9995;</button>
+                    <button class="toolbar-btn tool-select" title="选择/移动" data-tool="select">&#128070;</button>
+                    
+                    <!-- 第二行：编辑功能 -->
                     <input type="color" class="color-picker" value="#FF0000" title="选择颜色">
                     <input type="range" class="brush-size" min="1" max="20" value="3" title="画笔粗细">
                     <input type="range" class="opacity-slider" min="0.1" max="1" step="0.1" value="1" title="透明度">
                     <span class="opacity-value" style="color: white; font-size: 12px; min-width: 35px;">100%</span>
-                    <button class="toolbar-btn draw-undo" title="撤销">↩️</button>
-                    <button class="toolbar-btn draw-redo" title="重做">↪️</button>
-                    <button class="toolbar-btn draw-clear" title="清空">🗑️</button>
+                    <button class="toolbar-btn draw-undo" title="撤销">&#8617;</button>
+                    <button class="toolbar-btn draw-redo" title="重做">&#8618;</button>
+                    <button class="toolbar-btn draw-clear" title="清空">&#128465;</button>
                     <div class="toolbar-separator"></div>
-                    <button class="toolbar-btn layer-manager" title="图层管理">📚</button>
-                    <button class="toolbar-btn export-pdf" title="导出PDF">📄</button>
-                    <button class="toolbar-btn download-annotated" title="下载标注图片">💾</button>
+                    <button class="toolbar-btn export-pdf" title="导出PDF">&#128196;</button>
+                    <button class="toolbar-btn download-annotated" title="下载标注图片">&#128190;</button>
                 </div>
                 <span class="modal-close">&times;</span>
                 <button class="modal-nav modal-prev">&#10094;</button>
@@ -243,9 +238,42 @@
                     }
                     
                     console.log('找到菜单项:', item);
-                    console.log('工具名称:', item.dataset.tool);
                     
                     e.stopPropagation();
+                    
+                    // 检查是否是特殊按钮（图层管理或水印设置）
+                    if (item.id === 'dropdownLayerManager') {
+                        console.log('点击了图层管理');
+                        const layerPanel = modal.querySelector('.layer-panel');
+                        if (layerPanel) {
+                            const isVisible = layerPanel.style.display !== 'none';
+                            if (isVisible) {
+                                layerPanel.style.display = 'none';
+                            } else {
+                                layerPanel.style.display = 'block';
+                                // 关键修复：打开图层管理面板时，需要渲染列表并绑定按钮事件
+                                if (window.WallLayers && window.WallLayers.renderList) {
+                                    window.WallLayers.renderList(modal);
+                                }
+                            }
+                        }
+                        dropdownMenu.classList.remove('show');
+                        return;
+                    }
+                    
+                    if (item.id === 'dropdownWatermarkSettings') {
+                        console.log('点击了水印设置');
+                        const watermarkPanel = modal.querySelector('.watermark-panel');
+                        if (watermarkPanel) {
+                            const isVisible = watermarkPanel.style.display !== 'none';
+                            watermarkPanel.style.display = isVisible ? 'none' : 'block';
+                        }
+                        dropdownMenu.classList.remove('show');
+                        return;
+                    }
+                    
+                    // 普通工具切换
+                    console.log('工具名称:', item.dataset.tool);
                     
                     // 更新active状态
                     dropdownItems.forEach(function(i) { i.classList.remove('active'); });
@@ -617,8 +645,12 @@
 
             // 触摸事件（移动端支持）
             toolbar.addEventListener('touchstart', function(e) {
+                // 关键修复：如果点击的是按钮或下拉菜单，不拖动
                 if (e.target.classList.contains('toolbar-btn') || 
                     e.target.classList.contains('color-picker') ||
+                    e.target.classList.contains('tool-dropdown-toggle') ||
+                    e.target.classList.contains('tool-dropdown-item') ||
+                    e.target.closest('.tool-dropdown-menu') ||
                     e.target.tagName === 'INPUT' ||
                     e.target.tagName === 'SELECT') {
                     return;

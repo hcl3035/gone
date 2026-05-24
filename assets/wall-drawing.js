@@ -357,6 +357,11 @@
                 }
                 
                 if (!State.isDrawingMode || layerIndex !== State.activeCanvasIndex) return;
+                
+                // 关键修复：开始绘制新线段时，隐藏旧的端点
+                if ((State.currentTool === 'straight-line' || State.currentTool === 'arrow') && window.hideLineHandles) {
+                    window.hideLineHandles();
+                }
 
                 // 关键修复：直接使用鼠标相对于canvas的位置，考虑缩放
                 const rect = canvas.getBoundingClientRect();
@@ -497,21 +502,30 @@
                 canvas.removeEventListener('touchmove', handleTouchMove);
                 canvas.removeEventListener('touchend', stopDrawing);
                 
-                // 关键修复：绘制完直线或箭头后，自动显示控制点
+                // 关键修复：绘制完直线或箭头后，只有在有实际拖动时才显示控制点
                 if ((State.currentTool === 'straight-line' || State.currentTool === 'arrow') && !isEditingLine) {
-                    currentLine = {
-                        startX: startX,
-                        startY: startY,
-                        endX: lastDrawEndX,
-                        endY: lastDrawEndY,
-                        tool: State.currentTool
-                    };
+                    // 计算起点和终点的距离
+                    const distance = Math.sqrt(
+                        Math.pow(lastDrawEndX - startX, 2) + 
+                        Math.pow(lastDrawEndY - startY, 2)
+                    );
                     
-                    // 关键修复：使用brushSnapshot作为干净快照（绘制前的状态）
-                    cleanSnapshot = brushSnapshot;
-                    
-                    // 关键修复：绘制完成后自动显示控制点，方便立即调整
-                    showLineHandles();
+                    // 只有当距离大于5px时，才认为是有效线段，显示控制点
+                    if (distance > 5) {
+                        currentLine = {
+                            startX: startX,
+                            startY: startY,
+                            endX: lastDrawEndX,
+                            endY: lastDrawEndY,
+                            tool: State.currentTool
+                        };
+                        
+                        // 关键修复：使用brushSnapshot作为干净快照（绘制前的状态）
+                        cleanSnapshot = brushSnapshot;
+                        
+                        // 关键修复：绘制完成后自动显示控制点，方便立即调整
+                        showLineHandles();
+                    }
                 }
                 
                 brushSnapshot = null;
@@ -598,16 +612,38 @@
                     document.addEventListener('mouseup', handleMouseUp);
                 }
                 
-                // 关键修复：添加触摸事件支持
+                // 关键修复：添加触摸事件支持（长按移动）
+                let touchTimer = null;
+                let isLongPress = false;
+                let touchStartX = 0;
+                let touchStartY = 0;
+                
                 function handleTouchStart(e) {
                     e.preventDefault();
                     e.stopPropagation();
-                    isDragging = true;
-                    dragEndpoint = this.classList.contains('line-handle-start') ? 'start' : 'end';
-                    this.style.transform = 'scale(1.2)';
                     
-                    document.addEventListener('touchmove', handleTouchMove, { passive: false });
-                    document.addEventListener('touchend', handleTouchEnd);
+                    const touch = e.touches[0];
+                    touchStartX = touch.clientX;
+                    touchStartY = touch.clientY;
+                    isLongPress = false;
+                    
+                    // 设置长按定时器（500ms）
+                    touchTimer = setTimeout(function() {
+                        isLongPress = true;
+                        isDragging = true;  // 关键修复：设置拖动状态
+                        dragEndpoint = this.classList.contains('line-handle-start') ? 'start' : 'end';
+                        this.style.transform = 'scale(1.3)';
+                        
+                        // 关键修复：添加振动反馈
+                        if (navigator.vibrate) {
+                            navigator.vibrate(50); // 振动50ms
+                        }
+                        
+                        document.addEventListener('touchmove', handleTouchMove, { passive: false });
+                        document.addEventListener('touchend', handleTouchEnd);
+                    }.bind(this), 500);
+                    
+                    e.stopPropagation();
                 }
                 
                 function handleTouchMove(e) {
@@ -995,10 +1031,16 @@
         enableAllCanvases: function() {
             console.log('=== enableAllCanvases ===');
             console.log('activeCanvasIndex:', State.activeCanvasIndex);
+            console.log('currentTool:', State.currentTool);
+            
+            // 关键修复：选择工具时，Canvas不拦截事件，让事件穿透到文字层
+            const shouldBlockEvents = State.isDrawingMode;
+            
             State.layerCanvases.forEach((layer, index) => {
                 if (layer && layer.element) {
                     const isActive = index === State.activeCanvasIndex;
-                    layer.element.style.pointerEvents = isActive ? 'auto' : 'none';
+                    // 选择工具时，即使是活动图层也不拦截事件
+                    layer.element.style.pointerEvents = (isActive && shouldBlockEvents) ? 'auto' : 'none';
                     // 关键修复：确保活动图层在最上层
                     layer.element.style.zIndex = isActive ? '1000' : index;
                     console.log(`Layer ${index}: pointerEvents = ${layer.element.style.pointerEvents}, zIndex = ${layer.element.style.zIndex}, isActive = ${isActive}`);

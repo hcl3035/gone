@@ -177,6 +177,7 @@
                     if (annotation.layer === State.activeCanvasIndex) {
                         const elem = createTextElement(annotation, index);
 
+                        // 鼠标事件（桌面端）
                         elem.addEventListener('mousedown', function(e) {
                             if (State.currentTool !== 'select' && State.currentTool !== 'text') return;
 
@@ -189,6 +190,105 @@
 
                             e.stopPropagation();
                             e.preventDefault();
+                        });
+
+                        // 关键修复：添加触摸事件支持（移动端）
+                        let touchTimer = null;
+                        let isLongPress = false;
+                        let touchStartX = 0;
+                        let touchStartY = 0;
+                        
+                        elem.addEventListener('touchstart', function(e) {
+                            if (State.currentTool !== 'select' && State.currentTool !== 'text') return;
+                            
+                            const touch = e.touches[0];
+                            touchStartX = touch.clientX;
+                            touchStartY = touch.clientY;
+                            isLongPress = false;
+                            
+                            // 设置长按定时器（500ms）
+                            touchTimer = setTimeout(function() {
+                                isLongPress = true;
+                                selectedTextElement = elem;
+                                isDraggingText = true;
+                                dragStartX = touchStartX;
+                                dragStartY = touchStartY;
+                                initialLeft = parseFloat(elem.style.left);
+                                initialTop = parseFloat(elem.style.top);
+                                
+                                // 关键修复：添加振动反馈
+                                if (navigator.vibrate) {
+                                    navigator.vibrate(50); // 振动50ms
+                                }
+                                
+                                // 视觉反馈：放大文字
+                                elem.style.transform = 'scale(1.1)';
+                                elem.style.transition = 'transform 0.2s ease';
+                                
+                                e.preventDefault();
+                            }, 500);
+                            
+                            e.stopPropagation();
+                        }, { passive: false });
+                        
+                        elem.addEventListener('touchmove', function(e) {
+                            if (!isLongPress) {
+                                // 如果移动距离超过10px，取消长按
+                                const touch = e.touches[0];
+                                const moveDistance = Math.sqrt(
+                                    Math.pow(touch.clientX - touchStartX, 2) + 
+                                    Math.pow(touch.clientY - touchStartY, 2)
+                                );
+                                
+                                if (moveDistance > 10) {
+                                    clearTimeout(touchTimer);
+                                    isLongPress = false;
+                                }
+                                return;
+                            }
+                            
+                            // 长按后拖动
+                            const touch = e.touches[0];
+                            const deltaX = touch.clientX - dragStartX;
+                            const deltaY = touch.clientY - dragStartY;
+                            
+                            // 考虑缩放比例
+                            const scaledDeltaX = deltaX / State.currentScale;
+                            const scaledDeltaY = deltaY / State.currentScale;
+                            
+                            const newLeft = initialLeft + scaledDeltaX;
+                            const newTop = initialTop + scaledDeltaY;
+                            
+                            elem.style.left = newLeft + 'px';
+                            elem.style.top = newTop + 'px';
+                            
+                            const annotationIndex = parseInt(elem.dataset.annotationIndex);
+                            const annotation = State.textAnnotations[annotationIndex];
+                            
+                            annotation.x = newLeft;
+                            annotation.y = newTop + annotation.size;
+                            
+                            e.preventDefault();
+                        }, { passive: false });
+                        
+                        elem.addEventListener('touchend', function(e) {
+                            clearTimeout(touchTimer);
+                            
+                            if (isLongPress) {
+                                // 恢复文字大小
+                                elem.style.transform = 'scale(1)';
+                                
+                                isDraggingText = false;
+                                selectedTextElement = null;
+                                isLongPress = false;
+                                
+                                // 振动反馈
+                                if (navigator.vibrate) {
+                                    navigator.vibrate(30); // 振动30ms
+                                }
+                            }
+                            
+                            e.stopPropagation();
                         });
 
                         textContainer.appendChild(elem);
