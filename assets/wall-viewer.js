@@ -43,6 +43,22 @@
             modal.innerHTML = `
                 <span class="modal-close">&times;</span>
                 <button class="modal-nav modal-prev">&#10094;</button>
+                <!-- 关键修复：添加工具提示显示（可作为快捷切换菜单） -->
+                <div class="current-tool-indicator" style="display:none;">
+                    <span class="tool-icon"></span>
+                    <span class="tool-name"></span>
+                    <span class="dropdown-arrow">▼</span>
+                    <!-- 快捷工具切换下拉菜单 -->
+                    <div class="quick-tool-menu">
+                        <button class="quick-tool-item" data-tool="brush">✏️ 画笔</button>
+                        <button class="quick-tool-item" data-tool="straight-line">📏 直线</button>
+                        <button class="quick-tool-item" data-tool="eraser">🧽 橡皮擦</button>
+                        <button class="quick-tool-item" data-tool="text">T 文字</button>
+                        <button class="quick-tool-item" data-tool="arrow">➡️ 箭头</button>
+                        <button class="quick-tool-item" data-tool="rect">□ 矩形</button>
+                        <button class="quick-tool-item" data-tool="circle">○ 圆形</button>
+                    </div>
+                </div>
                 <div class="modal-image-container">
                     <div class="layers-container" style="position:absolute; top:0; left:0; width:100%; height:100%;">
                         <img class="modal-image" src="" alt="Original Image" style="display:block; width:100%; height:100%; object-fit:contain;">
@@ -71,6 +87,22 @@
                             <button class="tool-dropdown-item" data-tool="rect">&#9634; 矩形</button>
                             <button class="tool-dropdown-item" data-tool="circle">&#11093; 圆形</button>
                             <div class="dropdown-separator"></div>
+                            <!-- 关键修复：颜色和透明度设置移至下拉菜单内 -->
+                            <div class="dropdown-settings-group">
+                                <label class="dropdown-setting-label">
+                                    <span>颜色：</span>
+                                    <input type="color" class="color-picker" value="#FF0000" title="选择颜色">
+                                </label>
+                                <label class="dropdown-setting-label">
+                                    <span>粗细：</span>
+                                    <input type="range" class="brush-size" min="1" max="20" value="3" title="画笔粗细">
+                                </label>
+                                <label class="dropdown-setting-label">
+                                    <span>透明度：</span>
+                                    <input type="range" class="opacity-slider" min="0.1" max="1" step="0.1" value="1" title="透明度">
+                                    <span class="opacity-value" style="color: white; font-size: 12px; min-width: 35px;">100%</span>
+                                </label>
+                            </div>
                             <div class="dropdown-separator"></div>
                             <button class="tool-dropdown-item layer-manager-item" id="dropdownLayerManager">&#128218; 图层管理</button>
                             <button class="tool-dropdown-item watermark-settings-item" id="dropdownWatermarkSettings">&#128167; 水印设置</button>
@@ -79,23 +111,23 @@
                     
                     <!-- 可滚动的工具容器 -->
                     <div class="toolbar-scrollable">
-                        <!-- 导航和常用工具 -->
+                        <!-- 关键修复：手掌和手指排在下拉菜单右边 -->
+                        <button class="toolbar-btn tool-hand" title="平移/抓手" data-tool="hand">&#9995;</button>
+                        <button class="toolbar-btn tool-select" title="选择/移动" data-tool="select">&#128070;</button>
+                        
+                        <!-- 关键修复：撤销、重做、删除紧跟其后 -->
+                        <button class="toolbar-btn draw-undo" title="撤销">&#8617;</button>
+                        <button class="toolbar-btn draw-redo" title="重做">&#8618;</button>
+                        <button class="toolbar-btn draw-clear" title="清空">&#128465;</button>
+                        
+                        <!-- 导航和缩放工具 -->
+                        <div class="toolbar-separator"></div>
                         <button class="toolbar-btn zoom-in" title="放大">+</button>
                         <button class="toolbar-btn zoom-out" title="缩小">&minus;</button>
                         <button class="toolbar-btn zoom-reset" title="重置">&#8634;</button>
                         <span class="zoom-level">100%</span>
-                        <button class="toolbar-btn tool-hand" title="平移/抓手" data-tool="hand">&#9995;</button>
-                        <!-- 关键修复：选择工具移到平移工具右边 -->
-                        <button class="toolbar-btn tool-select" title="选择/移动" data-tool="select">&#128070;</button>
                         
-                        <!-- 编辑功能 -->
-                        <input type="color" class="color-picker" value="#FF0000" title="选择颜色">
-                        <input type="range" class="brush-size" min="1" max="20" value="3" title="画笔粗细">
-                        <input type="range" class="opacity-slider" min="0.1" max="1" step="0.1" value="1" title="透明度">
-                        <span class="opacity-value" style="color: white; font-size: 12px; min-width: 35px;">100%</span>
-                        <button class="toolbar-btn draw-undo" title="撤销">&#8617;</button>
-                        <button class="toolbar-btn draw-redo" title="重做">&#8618;</button>
-                        <button class="toolbar-btn draw-clear" title="清空">&#128465;</button>
+                        <!-- 导出功能 -->
                         <div class="toolbar-separator"></div>
                         <button class="toolbar-btn export-pdf" title="导出PDF">&#128196;</button>
                         <button class="toolbar-btn download-annotated" title="下载标注图片">&#128190;</button>
@@ -246,13 +278,34 @@
                 // 关键修复：使用事件委托，在下拉菜单容器上监听点击和触摸
                 dropdownMenu.addEventListener('click', function(e) {
                     console.log('=== 下拉菜单被点击（事件委托） ===');
+                    console.log('点击的目标:', e.target.tagName, e.target.className);
+                    
+                    // 关键修复：如果点击的是input元素（颜色选择器、滑块等），不要关闭菜单
+                    if (e.target.tagName === 'INPUT') {
+                        console.log('点击了input元素，保持菜单打开');
+                        e.stopPropagation();
+                        return;
+                    }
+                    
                     handleDropdownItemClick(e);
                 });
                 
                 // 关键修复：添加触摸事件支持
                 dropdownMenu.addEventListener('touchend', function(e) {
                     console.log('=== 下拉菜单被触摸（事件委托） ===');
-                    e.preventDefault();
+                    console.log('触摸的目标:', e.target.tagName, e.target.className);
+                    
+                    // 关键修复：如果触摸的是input元素，不要关闭菜单
+                    if (e.target.tagName === 'INPUT') {
+                        console.log('触摸了input元素，保持菜单打开');
+                        e.stopPropagation();
+                        return;
+                    }
+                    
+                    // 关键修复：只在可取消时才调用preventDefault
+                    if (e.cancelable) {
+                        e.preventDefault();
+                    }
                     handleDropdownItemClick(e);
                 });
                 
@@ -417,6 +470,10 @@
             
             // 绑定标注工具（但不初始化图层）
             window.WallDrawing.setupToolsWithoutInit(modal);
+            // 关键修复：绑定快捷工具菜单
+            if (window.WallDrawing && window.WallDrawing.bindQuickToolMenu) {
+                window.WallDrawing.bindQuickToolMenu(modal);
+            }
             window.WallText.setupInput(modal);
             window.WallText.makeMovable();
             window.WallLayers.init(modal);
@@ -570,16 +627,54 @@
         },
 
         zoomIn: function() {
+            const modal = document.getElementById('imageModal');
+            if (!modal) return;
+            
+            // 关键修复：获取视口中心点
+            const viewportCenterX = window.innerWidth / 2;
+            const viewportCenterY = window.innerHeight / 2;
+            
+            // 保存旧缩放比例
+            const oldScale = State.currentScale;
+            
+            // 计算新缩放比例
             State.currentScale = Math.min(State.currentScale + 0.25, 5);
+            const newScale = State.currentScale;
+            
+            // 关键修复：计算缩放前后的偏移量，保持中心点不变
+            const scaleRatio = newScale / oldScale;
+            State.translateX = viewportCenterX - (viewportCenterX - State.translateX) * scaleRatio;
+            State.translateY = viewportCenterY - (viewportCenterY - State.translateY) * scaleRatio;
+            
             this.applyTransform();
         },
 
         zoomOut: function() {
+            const modal = document.getElementById('imageModal');
+            if (!modal) return;
+            
+            // 关键修复：获取视口中心点
+            const viewportCenterX = window.innerWidth / 2;
+            const viewportCenterY = window.innerHeight / 2;
+            
+            // 保存旧缩放比例
+            const oldScale = State.currentScale;
+            
+            // 计算新缩放比例
             State.currentScale = Math.max(State.currentScale - 0.25, 0.25);
+            const newScale = State.currentScale;
+            
+            // 关键修复：如果缩放到1或更小，重置位置
             if (State.currentScale <= 1) {
                 State.translateX = 0;
                 State.translateY = 0;
+            } else {
+                // 关键修复：计算缩放前后的偏移量，保持中心点不变
+                const scaleRatio = newScale / oldScale;
+                State.translateX = viewportCenterX - (viewportCenterX - State.translateX) * scaleRatio;
+                State.translateY = viewportCenterY - (viewportCenterY - State.translateY) * scaleRatio;
             }
+            
             this.applyTransform();
         },
 

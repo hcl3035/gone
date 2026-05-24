@@ -67,6 +67,9 @@
                     const cursor = cursorMap[State.currentTool] || 'crosshair';
                     self.updateAllCursors(cursor);
                     self.enableAllCanvases();
+                    
+                    // 关键修复：更新工具指示器
+                    self.updateToolIndicator(modal, State.currentTool);
                 };
             });
 
@@ -1045,6 +1048,120 @@
                     layer.element.style.zIndex = isActive ? '1000' : index;
                     console.log(`Layer ${index}: pointerEvents = ${layer.element.style.pointerEvents}, zIndex = ${layer.element.style.zIndex}, isActive = ${isActive}`);
                 }
+            });
+        },
+
+        // 关键修复：更新工具指示器
+        updateToolIndicator: function(modal, tool) {
+            const indicator = modal.querySelector('.current-tool-indicator');
+            if (!indicator) return;
+            
+            // 工具名称映射
+            const toolNames = {
+                'brush': '画笔',
+                'straight-line': '直线',
+                'eraser': '橡皮擦',
+                'text': '文字',
+                'arrow': '箭头',
+                'rect': '矩形',
+                'circle': '圆形',
+                'hand': '平移',
+                'select': '选择'
+            };
+            
+            // 工具图标映射
+            const toolIcons = {
+                'brush': '\u270f\ufe0f',
+                'straight-line': '\ud83d\udccf',
+                'eraser': '\ud83e\uddfd',
+                'text': 'T',
+                'arrow': '\u27a1\ufe0f',
+                'rect': '\u25a1',
+                'circle': '\u25cb',
+                'hand': '\ud83d\udd90',
+                'select': '\ud83d\udc46'
+            };
+            
+            const iconEl = indicator.querySelector('.tool-icon');
+            const nameEl = indicator.querySelector('.tool-name');
+            
+            if (iconEl) iconEl.textContent = toolIcons[tool] || '\u2753';
+            if (nameEl) nameEl.textContent = toolNames[tool] || tool;
+            
+            // 显示指示器
+            indicator.style.display = 'flex';
+            
+            // 关键修复：更新快捷菜单中的active状态
+            const quickItems = indicator.querySelectorAll('.quick-tool-item');
+            quickItems.forEach(function(item) {
+                item.classList.remove('active');
+                if (item.dataset.tool === tool) {
+                    item.classList.add('active');
+                }
+            });
+            
+            // 关键修复：3秒后自动隐藏（如果是非绘图工具）
+            if (this.toolIndicatorTimer) {
+                clearTimeout(this.toolIndicatorTimer);
+            }
+            
+            const nonDrawingTools = ['hand', 'select'];
+            if (nonDrawingTools.includes(tool)) {
+                this.toolIndicatorTimer = setTimeout(function() {
+                    indicator.style.display = 'none';
+                    // 关闭快捷菜单
+                    indicator.classList.remove('show-menu');
+                }, 3000);
+            }
+        },
+
+        // 关键修复：绑定快捷工具菜单事件
+        bindQuickToolMenu: function(modal) {
+            const indicator = modal.querySelector('.current-tool-indicator');
+            if (!indicator) return;
+            
+            const self = this;
+            
+            // 点击指示器切换菜单显示
+            indicator.addEventListener('click', function(e) {
+                e.stopPropagation();
+                
+                // 如果点击的是快捷菜单项，不处理（由下面的事件处理）
+                if (e.target.closest('.quick-tool-item')) {
+                    return;
+                }
+                
+                // 切换菜单显示
+                indicator.classList.toggle('show-menu');
+                
+                // 清除自动隐藏定时器
+                if (self.toolIndicatorTimer) {
+                    clearTimeout(self.toolIndicatorTimer);
+                }
+            });
+            
+            // 点击快捷菜单项切换工具
+            const quickItems = indicator.querySelectorAll('.quick-tool-item');
+            quickItems.forEach(function(item) {
+                item.addEventListener('click', function(e) {
+                    e.stopPropagation();
+                    
+                    const tool = this.dataset.tool;
+                    
+                    // 触发对应的工具按钮点击
+                    const toolBtn = modal.querySelector(`.toolbar-btn[data-tool="${tool}"]`);
+                    if (toolBtn) {
+                        toolBtn.click();
+                    }
+                    
+                    // 关闭菜单
+                    indicator.classList.remove('show-menu');
+                });
+            });
+            
+            // 点击其他地方关闭菜单
+            document.addEventListener('click', function() {
+                indicator.classList.remove('show-menu');
             });
         },
 
