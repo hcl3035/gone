@@ -6,33 +6,35 @@
     const Utils = window.WallUtils;
 
     window.WallText = {
+        // 关键修复：将 handleConfirm 提升为公共方法，供 showEditInput 调用
+        handleNewTextConfirm: function(modal) {
+            const textInputContainer = modal.querySelector('.text-input-container');
+            const textInput = modal.querySelector('.text-annotation-input');
+            const text = textInput.value.trim();
+            if (text) {
+                this.addAnnotation(text);
+            }
+            textInputContainer.style.display = 'none';
+            textInput.value = '';
+        },
+        
         setupInput: function(modal) {
             const textInputContainer = modal.querySelector('.text-input-container');
             const textInput = modal.querySelector('.text-annotation-input');
             const textConfirmBtn = modal.querySelector('.text-confirm-btn');
 
             // 关键修复：添加确认按钮的点击和触摸事件处理
-            const handleConfirm = function() {
-                const text = textInput.value.trim();
-                if (text) {
-                    this.addAnnotation(text);
-                }
-                textInputContainer.style.display = 'none';
-                textInput.value = '';
-            }.bind(this);
-
-            // 桌面端点击事件
             textConfirmBtn.onclick = function(e) {
                 e.preventDefault();
                 e.stopPropagation();
-                handleConfirm();
+                window.WallText.handleNewTextConfirm(modal);
             };
 
             // 关键修复：移动端触摸事件
             textConfirmBtn.addEventListener('touchend', function(e) {
                 e.preventDefault();
                 e.stopPropagation();
-                handleConfirm();
+                window.WallText.handleNewTextConfirm(modal);
             }, { passive: false });
 
             textInput.addEventListener('keydown', function(e) {
@@ -185,6 +187,127 @@
                 return div;
             }
 
+            // 关键修复：显示文字编辑输入框（长按1秒修改，2秒清空）
+            function showEditInput(touch, annotationIndex, isEditMode) {
+                const annotation = State.textAnnotations[annotationIndex];
+                if (!annotation) return;
+                
+                const modal = document.getElementById('imageModal');
+                const textInputContainer = modal.querySelector('.text-input-container');
+                const textInput = modal.querySelector('.text-annotation-input');
+                const textConfirmBtn = modal.querySelector('.text-confirm-btn');
+                
+                // 填充文字（修改模式保留原文字，清空模式为空）
+                textInput.value = isEditMode ? annotation.text : '';
+                
+                // 显示输入框
+                textInputContainer.style.display = 'block';
+                textInputContainer.style.position = 'fixed';
+                textInputContainer.style.left = (touch.clientX || 0) + 'px';
+                textInputContainer.style.top = (touch.clientY || 0) + 'px';
+                textInputContainer.style.zIndex = '99999';
+                
+                // 关键修复：移除所有旧的触摸监听器，避免叠加
+                const newConfirmBtn = textConfirmBtn.cloneNode(true);
+                if (textConfirmBtn.parentNode) {
+                    textConfirmBtn.parentNode.replaceChild(newConfirmBtn, textConfirmBtn);
+                }
+                
+                // 修改确认按钮的逻辑
+                const handleEditConfirm = function() {
+                    const newText = textInput.value.trim();
+                    
+                    console.log('=== handleEditConfirm ===');
+                    console.log('annotationIndex:', annotationIndex);
+                    console.log('isEditMode:', isEditMode);
+                    console.log('newText:', newText);
+                    console.log('State.textAnnotations.length:', State.textAnnotations.length);
+                    console.log('annotation before:', State.textAnnotations[annotationIndex]);
+                    
+                    if (newText) {
+                        // 更新文字内容
+                        if (State.textAnnotations[annotationIndex]) {
+                            State.textAnnotations[annotationIndex].text = newText;
+                            console.log('Updated annotation:', State.textAnnotations[annotationIndex]);
+                        } else {
+                            console.error('ERROR: annotationIndex', annotationIndex, 'is out of bounds!');
+                        }
+                        // 重新渲染文字元素
+                        if (window.refreshTextAnnotations) {
+                            window.refreshTextAnnotations();
+                        }
+                    } else if (isEditMode) {
+                        // 修改模式下如果输入为空，则删除该文字
+                        console.log('Deleting annotation at index:', annotationIndex);
+                        State.textAnnotations.splice(annotationIndex, 1);
+                        console.log('After delete, length:', State.textAnnotations.length);
+                        if (window.refreshTextAnnotations) {
+                            window.refreshTextAnnotations();
+                        }
+                    }
+                    // 清空模式：如果输入为空，文字已被删除
+                    
+                    textInputContainer.style.display = 'none';
+                    textInput.value = '';
+                    
+                    console.log('Restoring confirm button to handleNewTextConfirm');
+                    
+                    // 关键修复：再次克隆按钮，彻底清除所有旧监听器
+                    const finalConfirmBtn = newConfirmBtn.cloneNode(true);
+                    if (newConfirmBtn.parentNode) {
+                        newConfirmBtn.parentNode.replaceChild(finalConfirmBtn, newConfirmBtn);
+                    }
+                    
+                    // 恢复确认按钮的原始逻辑
+                    finalConfirmBtn.onclick = function(e) {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        window.WallText.handleNewTextConfirm(modal);
+                    };
+                    
+                    finalConfirmBtn.addEventListener('touchend', function(e) {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        window.WallText.handleNewTextConfirm(modal);
+                    }, { passive: false });
+                };
+                
+                // 临时修改确认按钮的行为
+                newConfirmBtn.onclick = function(e) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    handleEditConfirm();
+                };
+                
+                // 关键修复：移动端需要添加触摸事件来阻止传播，避免触发其他事件
+                newConfirmBtn.addEventListener('touchend', function(e) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    handleEditConfirm();
+                }, { passive: false });
+                
+                // 点击输入框时阻止事件传播，避免触发拖动
+                textInput.addEventListener('mousedown', function(e) {
+                    e.stopPropagation();
+                });
+                
+                textInput.addEventListener('touchstart', function(e) {
+                    e.stopPropagation();
+                }, { passive: false });
+                
+                setTimeout(function() {
+                    // 关键修复：强制聚焦，移除可能的干扰
+                    textInput.focus();
+                    if (isEditMode) {
+                        textInput.select(); // 修改模式：选中所有文字
+                    }
+                    // 再次尝试聚焦（解决某些浏览器的延迟问题）
+                    setTimeout(function() {
+                        textInput.focus();
+                    }, 100);
+                }, 50);
+            }
+
             function refreshTextElements() {
                 textContainer.innerHTML = '';
 
@@ -193,8 +316,55 @@
                         const elem = createTextElement(annotation, index);
 
                         // 鼠标事件（桌面端）
+                        let mouseTimer1 = null;  // 1秒定时器
+                        let mouseTimer2 = null;  // 2秒定时器
+                        let isMouseLongPress = false;
+                        let mouseStartX = 0;
+                        let mouseStartY = 0;
+                        
                         elem.addEventListener('mousedown', function(e) {
                             if (State.currentTool !== 'select' && State.currentTool !== 'text') return;
+
+                            // 右键菜单（保留原有功能）
+                            if (e.button === 2) {
+                                return;
+                            }
+                            
+                            // 左键长按
+                            if (e.button === 0) {
+                                mouseStartX = e.clientX;
+                                mouseStartY = e.clientY;
+                                isMouseLongPress = false;
+                                
+                                // 1秒定时器 - 修改模式
+                                mouseTimer1 = setTimeout(function() {
+                                    isMouseLongPress = true;
+                                    // 振动反馈（3次短振）
+                                    if (navigator.vibrate) {
+                                        navigator.vibrate([30, 50, 30]);
+                                    }
+                                    // 视觉反馈：放大文字
+                                    elem.style.transform = 'scale(1.15)';
+                                    elem.style.transition = 'transform 0.2s ease';
+                                    
+                                    // 显示输入框（修改模式）
+                                    showEditInput({clientX: mouseStartX, clientY: mouseStartY}, index, true);
+                                }, 1000);
+                                
+                                // 2秒定时器 - 清空模式
+                                mouseTimer2 = setTimeout(function() {
+                                    isEditMode = false;
+                                    // 振动反馈（5次振动）
+                                    if (navigator.vibrate) {
+                                        navigator.vibrate([50, 30, 50, 30, 50]);
+                                    }
+                                    // 视觉反馈：再次放大
+                                    elem.style.transform = 'scale(1.25)';
+                                    
+                                    // 显示输入框（清空模式）
+                                    showEditInput({clientX: mouseStartX, clientY: mouseStartY}, index, false);
+                                }, 2000);
+                            }
 
                             selectedTextElement = elem;
                             isDraggingText = true;
@@ -206,12 +376,53 @@
                             e.stopPropagation();
                             e.preventDefault();
                         });
+                        
+                        elem.addEventListener('mousemove', function(e) {
+                            if (!isMouseLongPress) {
+                                // 如果移动距离超过10px，取消长按
+                                const moveDistance = Math.sqrt(
+                                    Math.pow(e.clientX - mouseStartX, 2) + 
+                                    Math.pow(e.clientY - mouseStartY, 2)
+                                );
+                                
+                                if (moveDistance > 10) {
+                                    clearTimeout(mouseTimer1);
+                                    clearTimeout(mouseTimer2);
+                                    isMouseLongPress = false;
+                                }
+                            }
+                        });
+                        
+                        elem.addEventListener('mouseup', function(e) {
+                            clearTimeout(mouseTimer1);
+                            clearTimeout(mouseTimer2);
+                            
+                            if (isMouseLongPress) {
+                                // 恢复文字大小
+                                elem.style.transform = 'scale(1)';
+                                isMouseLongPress = false;
+                            }
+                            
+                            // 关键修复：无论是否长按，都要清理拖动状态
+                            // 如果已经弹出输入框，不要清理状态（让输入框保持打开）
+                            const modal = document.getElementById('imageModal');
+                            const textInputContainer = modal ? modal.querySelector('.text-input-container') : null;
+                            if (!textInputContainer || textInputContainer.style.display === 'none') {
+                                isDraggingText = false;
+                                selectedTextElement = null;
+                            }
+                            
+                            e.stopPropagation();
+                        });
 
-                        // 关键修复：添加触摸事件支持（移动端）
-                        let touchTimer = null;
+                        // 关键修复：长按文字显示输入框（1秒修改，2秒清空）
+                        let touchTimer1 = null;  // 1秒定时器
+                        let touchTimer2 = null;  // 2秒定时器
                         let isLongPress = false;
+                        let isEditMode = false;  // true=修改模式，false=清空模式
                         let touchStartX = 0;
                         let touchStartY = 0;
+                        let hasMoved = false;
                         
                         elem.addEventListener('touchstart', function(e) {
                             if (State.currentTool !== 'select' && State.currentTool !== 'text') return;
@@ -220,28 +431,38 @@
                             touchStartX = touch.clientX;
                             touchStartY = touch.clientY;
                             isLongPress = false;
+                            isEditMode = false;
+                            hasMoved = false;
                             
-                            // 设置长按定时器（500ms）
-                            touchTimer = setTimeout(function() {
+                            // 1秒定时器 - 修改模式
+                            touchTimer1 = setTimeout(function() {
                                 isLongPress = true;
-                                selectedTextElement = elem;
-                                isDraggingText = true;
-                                dragStartX = touchStartX;
-                                dragStartY = touchStartY;
-                                initialLeft = parseFloat(elem.style.left);
-                                initialTop = parseFloat(elem.style.top);
-                                
-                                // 关键修复：添加振动反馈
+                                isEditMode = true;
+                                // 振动反馈（3次短振）
                                 if (navigator.vibrate) {
-                                    navigator.vibrate(50); // 振动50ms
+                                    navigator.vibrate([30, 50, 30]);
                                 }
-                                
                                 // 视觉反馈：放大文字
-                                elem.style.transform = 'scale(1.1)';
+                                elem.style.transform = 'scale(1.15)';
                                 elem.style.transition = 'transform 0.2s ease';
                                 
-                                e.preventDefault();
-                            }, 500);
+                                // 显示输入框（修改模式）
+                                showEditInput(touch, index, true);
+                            }, 1000);
+                            
+                            // 2秒定时器 - 清空模式
+                            touchTimer2 = setTimeout(function() {
+                                isEditMode = false;
+                                // 振动反馈（5次振动）
+                                if (navigator.vibrate) {
+                                    navigator.vibrate([50, 30, 50, 30, 50]);
+                                }
+                                // 视觉反馈：再次放大
+                                elem.style.transform = 'scale(1.25)';
+                                
+                                // 显示输入框（清空模式）
+                                showEditInput(touch, index, false);
+                            }, 2000);
                             
                             e.stopPropagation();
                         }, { passive: false });
@@ -256,8 +477,9 @@
                                 );
                                 
                                 if (moveDistance > 10) {
-                                    clearTimeout(touchTimer);
-                                    isLongPress = false;
+                                    clearTimeout(touchTimer1);
+                                    clearTimeout(touchTimer2);
+                                    hasMoved = true;
                                 }
                                 return;
                             }
@@ -287,7 +509,8 @@
                         }, { passive: false });
                         
                         elem.addEventListener('touchend', function(e) {
-                            clearTimeout(touchTimer);
+                            clearTimeout(touchTimer1);
+                            clearTimeout(touchTimer2);
                             
                             if (isLongPress) {
                                 // 恢复文字大小
@@ -296,11 +519,14 @@
                                 isDraggingText = false;
                                 selectedTextElement = null;
                                 isLongPress = false;
-                                
-                                // 振动反馈
-                                if (navigator.vibrate) {
-                                    navigator.vibrate(30); // 振动30ms
-                                }
+                            }
+                            
+                            // 关键修复：如果已经弹出输入框，不要清理状态
+                            const modal = document.getElementById('imageModal');
+                            const textInputContainer = modal ? modal.querySelector('.text-input-container') : null;
+                            if (!textInputContainer || textInputContainer.style.display === 'none') {
+                                isDraggingText = false;
+                                selectedTextElement = null;
                             }
                             
                             e.stopPropagation();

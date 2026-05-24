@@ -976,6 +976,46 @@ select {
   box-shadow: 0 2px 8px rgba(76, 175, 80, 0.3);
 }
 
+/* 关键修复：文字注释元素样式 */
+.text-annotation-element {
+  transition: transform 0.2s ease;
+  user-select: none;
+  -webkit-user-select: none;
+  cursor: move;
+}
+
+.text-annotation-element:hover {
+  filter: brightness(1.1);
+}
+
+/* 关键修复：文字上下文菜单样式 */
+.text-context-menu {
+  animation: fadeIn 0.2s ease;
+}
+
+.text-menu-btn {
+  transition: all 0.2s ease;
+}
+
+.text-menu-edit:hover {
+  background-color: #f0f0f0 !important;
+}
+
+.text-menu-delete:hover {
+  background-color: #ffe0e0 !important;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
 .layer-panel {
   position: fixed;
   right: 20px;
