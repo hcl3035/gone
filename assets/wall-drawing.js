@@ -25,7 +25,10 @@
                     toolButtons.forEach(function(b) { b.classList.remove('active'); });
                     this.classList.add('active');
                     State.currentTool = this.dataset.tool;
-                    State.isDrawingMode = true;
+                    
+                    // 关键修复：只有绘图工具才设置isDrawingMode为true
+                    const drawingTools = ['brush', 'straight-line', 'eraser', 'arrow', 'rect', 'circle'];
+                    State.isDrawingMode = drawingTools.includes(State.currentTool);
                     
                     const cursorMap = {
                         'hand': 'grab',

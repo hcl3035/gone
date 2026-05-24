@@ -22,7 +22,7 @@
         translateY: 0,
 
         // 涂鸦状态
-        isDrawingMode: false,
+        isDrawingMode: true,  // 关键修复：默认画笔工具，所以isDrawingMode为true
         isDrawing: false,
         drawColor: '#FF0000',
         drawWidth: 3,
