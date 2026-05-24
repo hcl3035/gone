@@ -270,9 +270,9 @@ select {
 
 /* 下拉菜单样式 */
 .tool-dropdown-toggle {
-  width: 44px;
-  height: 44px;
-  font-size: 20px;
+  width: 56px;  /* 关键修复：从44px增大到56px (+27%) */
+  height: 56px;  /* 关键修复：从44px增大到56px (+27%) */
+  font-size: 28px;  /* 关键修复：从20px增大到28px (+40%) */
 }
 
 .tool-dropdown-menu {
