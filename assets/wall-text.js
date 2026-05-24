@@ -315,9 +315,7 @@
                     if (annotation.layer === State.activeCanvasIndex) {
                         const elem = createTextElement(annotation, index);
 
-                        // 鼠标事件（桌面端）
-                        let mouseTimer = null;  // 1秒定时器
-                        let isMouseLongPress = false;
+                        // 鼠标事件（桌面端）- 单击即可拖动，双击编辑
                         let mouseStartX = 0;
                         let mouseStartY = 0;
                         
@@ -329,26 +327,14 @@
                                 return;
                             }
                             
-                            // 左键长按
+                            // 左键按下 - 立即准备拖动
                             if (e.button === 0) {
                                 mouseStartX = e.clientX;
                                 mouseStartY = e.clientY;
-                                isMouseLongPress = false;
                                 
-                                // 1秒定时器 - 修改模式
-                                mouseTimer = setTimeout(function() {
-                                    isMouseLongPress = true;
-                                    // 振动反馈（3次短振）
-                                    if (navigator.vibrate) {
-                                        navigator.vibrate([30, 50, 30]);
-                                    }
-                                    // 视觉反馈：放大文字
-                                    elem.style.transform = 'scale(1.15)';
-                                    elem.style.transition = 'transform 0.2s ease';
-                                    
-                                    // 显示输入框（修改模式）
-                                    showEditInput({clientX: mouseStartX, clientY: mouseStartY}, index, true);
-                                }, 1000);
+                                // 视觉反馈：轻微放大文字
+                                elem.style.transform = 'scale(1.08)';
+                                elem.style.transition = 'transform 0.1s ease';
                             }
 
                             selectedTextElement = elem;
@@ -359,35 +345,13 @@
                             initialTop = parseFloat(elem.style.top);
 
                             e.stopPropagation();
-                            e.preventDefault();
-                        });
-                        
-                        elem.addEventListener('mousemove', function(e) {
-                            if (!isMouseLongPress) {
-                                // 如果移动距离超过10px，取消长按
-                                const moveDistance = Math.sqrt(
-                                    Math.pow(e.clientX - mouseStartX, 2) + 
-                                    Math.pow(e.clientY - mouseStartY, 2)
-                                );
-                                
-                                if (moveDistance > 10) {
-                                    clearTimeout(mouseTimer);
-                                    isMouseLongPress = false;
-                                }
-                            }
                         });
                         
                         elem.addEventListener('mouseup', function(e) {
-                            clearTimeout(mouseTimer);
+                            // 恢复文字大小
+                            elem.style.transform = 'scale(1)';
                             
-                            if (isMouseLongPress) {
-                                // 恢复文字大小
-                                elem.style.transform = 'scale(1)';
-                                isMouseLongPress = false;
-                            }
-                            
-                            // 关键修复：无论是否长按，都要清理拖动状态
-                            // 如果已经弹出输入框，不要清理状态（让输入框保持打开）
+                            // 清理拖动状态
                             const modal = document.getElementById('imageModal');
                             const textInputContainer = modal ? modal.querySelector('.text-input-container') : null;
                             if (!textInputContainer || textInputContainer.style.display === 'none') {
@@ -397,13 +361,37 @@
                             
                             e.stopPropagation();
                         });
+                        
+                        // 关键修复：双击编辑文字（桌面端）
+                        elem.addEventListener('dblclick', function(e) {
+                            if (State.currentTool !== 'select' && State.currentTool !== 'text') return;
+                            
+                            // 清除拖动状态，避免干扰
+                            isDraggingText = false;
+                            selectedTextElement = null;
+                            
+                            // 振动反馈（移动端）
+                            if (navigator.vibrate) {
+                                navigator.vibrate([30, 50, 30]);
+                            }
+                            
+                            // 视觉反馈：放大文字
+                            elem.style.transform = 'scale(1.15)';
+                            elem.style.transition = 'transform 0.2s ease';
+                            
+                            // 显示输入框（修改模式）
+                            showEditInput({clientX: e.clientX, clientY: e.clientY}, index, true);
+                            
+                            e.stopPropagation();
+                            e.preventDefault();
+                        });
 
-                        // 关键修复：长按文字显示输入框（1秒修改）
-                        let touchTimer = null;  // 1秒定时器
-                        let isLongPress = false;
+                        // 关键修复：移动端触摸事件 - 长按拖动，双击编辑
+                        let lastTapTime = 0;
                         let touchStartX = 0;
                         let touchStartY = 0;
                         let hasMoved = false;
+                        let isTouchDragging = false;  // 标记是否正在触摸拖动
                         
                         elem.addEventListener('touchstart', function(e) {
                             if (State.currentTool !== 'select' && State.currentTool !== 'text') return;
@@ -411,80 +399,104 @@
                             const touch = e.touches[0];
                             touchStartX = touch.clientX;
                             touchStartY = touch.clientY;
-                            isLongPress = false;
                             hasMoved = false;
+                            isTouchDragging = false;
                             
-                            // 1秒定时器 - 修改模式
-                            touchTimer = setTimeout(function() {
-                                isLongPress = true;
-                                // 振动反馈（3次短振）
-                                if (navigator.vibrate) {
-                                    navigator.vibrate([30, 50, 30]);
-                                }
-                                // 视觉反馈：放大文字
-                                elem.style.transform = 'scale(1.15)';
-                                elem.style.transition = 'transform 0.2s ease';
-                                
-                                // 显示输入框（修改模式）
-                                showEditInput(touch, index, true);
-                            }, 1000);
+                            // 视觉反馈：按下时立即放大文字
+                            elem.style.transform = 'scale(1.15)';
+                            elem.style.transition = 'transform 0.2s ease';
+                            
+                            // 振动反馈
+                            if (navigator.vibrate) {
+                                navigator.vibrate([30, 50, 30]);
+                            }
                             
                             e.stopPropagation();
                         }, { passive: false });
                         
                         elem.addEventListener('touchmove', function(e) {
-                            if (!isLongPress) {
-                                // 如果移动距离超过10px，取消长按
-                                const touch = e.touches[0];
+                            const touch = e.touches[0];
+                            
+                            // 如果还没有标记为移动状态，检查移动距离
+                            if (!hasMoved) {
                                 const moveDistance = Math.sqrt(
                                     Math.pow(touch.clientX - touchStartX, 2) + 
                                     Math.pow(touch.clientY - touchStartY, 2)
                                 );
                                 
                                 if (moveDistance > 10) {
-                                    clearTimeout(touchTimer);
                                     hasMoved = true;
+                                    isTouchDragging = true;
+                                    // 开始拖动，设置初始位置（只设置一次）
+                                    dragStartX = touch.clientX;
+                                    dragStartY = touch.clientY;
+                                    initialLeft = parseFloat(elem.style.left);
+                                    initialTop = parseFloat(elem.style.top);
+                                } else {
+                                    // 移动距离不够，不处理
+                                    return;
                                 }
-                                return;
                             }
                             
-                            // 长按后拖动
-                            const touch = e.touches[0];
-                            const deltaX = touch.clientX - dragStartX;
-                            const deltaY = touch.clientY - dragStartY;
+                            // 只有确认拖动后才执行拖动逻辑
+                            if (isTouchDragging) {
+                                const deltaX = touch.clientX - dragStartX;
+                                const deltaY = touch.clientY - dragStartY;
+                                
+                                // 考虑缩放比例
+                                const scaledDeltaX = deltaX / State.currentScale;
+                                const scaledDeltaY = deltaY / State.currentScale;
+                                
+                                const newLeft = initialLeft + scaledDeltaX;
+                                const newTop = initialTop + scaledDeltaY;
+                                
+                                elem.style.left = newLeft + 'px';
+                                elem.style.top = newTop + 'px';
+                                
+                                const annotationIndex = parseInt(elem.dataset.annotationIndex);
+                                const annotation = State.textAnnotations[annotationIndex];
+                                
+                                annotation.x = newLeft;
+                                annotation.y = newTop + annotation.size;
+                            }
                             
-                            // 考虑缩放比例
-                            const scaledDeltaX = deltaX / State.currentScale;
-                            const scaledDeltaY = deltaY / State.currentScale;
-                            
-                            const newLeft = initialLeft + scaledDeltaX;
-                            const newTop = initialTop + scaledDeltaY;
-                            
-                            elem.style.left = newLeft + 'px';
-                            elem.style.top = newTop + 'px';
-                            
-                            const annotationIndex = parseInt(elem.dataset.annotationIndex);
-                            const annotation = State.textAnnotations[annotationIndex];
-                            
-                            annotation.x = newLeft;
-                            annotation.y = newTop + annotation.size;
-                            
-                            e.preventDefault();
+                            // 只在事件可取消时才调用 preventDefault
+                            if (e.cancelable) {
+                                e.preventDefault();
+                            }
                         }, { passive: false });
                         
                         elem.addEventListener('touchend', function(e) {
-                            clearTimeout(touchTimer);
+                            const currentTime = new Date().getTime();
+                            const tapLength = currentTime - lastTapTime;
                             
-                            if (isLongPress) {
-                                // 恢复文字大小
-                                elem.style.transform = 'scale(1)';
+                            // 检测双击（两次触摸间隔小于300ms且没有移动）
+                            if (tapLength < 300 && tapLength > 0 && !hasMoved) {
+                                if (State.currentTool !== 'select' && State.currentTool !== 'text') return;
                                 
-                                isDraggingText = false;
-                                selectedTextElement = null;
-                                isLongPress = false;
+                                // 振动反馈
+                                if (navigator.vibrate) {
+                                    navigator.vibrate([30, 50, 30]);
+                                }
+                                
+                                // 视觉反馈：放大文字
+                                elem.style.transform = 'scale(1.15)';
+                                elem.style.transition = 'transform 0.2s ease';
+                                
+                                // 显示输入框（修改模式）
+                                const touch = e.changedTouches[0];
+                                showEditInput({clientX: touch.clientX, clientY: touch.clientY}, index, true);
                             }
                             
-                            // 关键修复：如果已经弹出输入框，不要清理状态
+                            lastTapTime = currentTime;
+                            
+                            // 清理拖动状态
+                            isTouchDragging = false;
+                            hasMoved = false;
+                            
+                            // 恢复文字大小
+                            elem.style.transform = 'scale(1)';
+                            
                             const modal = document.getElementById('imageModal');
                             const textInputContainer = modal ? modal.querySelector('.text-input-container') : null;
                             if (!textInputContainer || textInputContainer.style.display === 'none') {
