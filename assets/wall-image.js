@@ -122,7 +122,13 @@
             img.dataset.imageUrl = imageUrl;
             
             img.onclick = function() {
-                window.WallViewer.open(imageUrl, imageKey);
+                // 关键修复：检查 WallViewer 是否已加载
+                if (window.WallViewer && window.WallViewer.open) {
+                    window.WallViewer.open(imageUrl, imageKey);
+                } else {
+                    console.error('WallViewer not loaded yet');
+                    Utils.showNotification('图片查看器未加载，请刷新页面');
+                }
             };
             
             const deleteBtn = document.createElement('button');

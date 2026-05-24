@@ -459,6 +459,29 @@
                     if (e.key === '0') self.resetZoom();
                 }
             });
+            
+            // 关键修复：屏蔽图片外区域的长按系统菜单（移动端）
+            // 使用之前已经声明的 imgContainer 变量
+            if (imgContainer) {
+                imgContainer.addEventListener('contextmenu', function(e) {
+                    e.preventDefault();
+                    return false;
+                });
+                
+                // 阻止长按时的默认行为
+                imgContainer.addEventListener('touchstart', function(e) {
+                    // 如果不是在图片或文字上，阻止默认行为
+                    const target = e.target;
+                    const isImage = target.classList.contains('modal-image');
+                    const isText = target.closest('.text-annotations-container');
+                    const isCanvas = target.classList.contains('annotation-layer');
+                    
+                    if (!isImage && !isText && !isCanvas) {
+                        // 在图片外的区域长按，阻止系统菜单
+                        e.preventDefault();
+                    }
+                }, { passive: false });
+            }
         },
 
         updateModalImage: function() {
