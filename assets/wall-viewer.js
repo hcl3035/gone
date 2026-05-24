@@ -42,8 +42,8 @@
             modal.className = 'imageModal';
             modal.innerHTML = `
                 <div class="modal-toolbar">
-                    <!-- 关键修复：小屏幕时的工具选择下拉菜单 -->
-                    <div class="tool-dropdown-container" style="display: none;">
+                    <!-- 关键修复：工具选择下拉菜单（所有屏幕尺寸都显示） -->
+                    <div class="tool-dropdown-container">
                         <button class="toolbar-btn tool-dropdown-toggle" title="选择工具">🔧</button>
                         <div class="tool-dropdown-menu">
                             <button class="tool-dropdown-item" data-tool="hand">✋ 平移</button>
@@ -193,33 +193,78 @@
             const dropdownMenu = modal.querySelector('.tool-dropdown-menu');
             const dropdownItems = modal.querySelectorAll('.tool-dropdown-item');
             
+            console.log('=== 下拉菜单元素查找 ===');
+            console.log('dropdownToggle:', dropdownToggle);
+            console.log('dropdownMenu:', dropdownMenu);
+            console.log('dropdownItems数量:', dropdownItems.length);
+            
             if (dropdownToggle && dropdownMenu) {
+                console.log('下拉菜单初始化成功');
+                
                 // 点击切换按钮显示/隐藏下拉菜单
                 dropdownToggle.addEventListener('click', function(e) {
+                    console.log('=== 下拉菜单切换按钮被点击 ===');
                     e.stopPropagation();
                     dropdownMenu.classList.toggle('show');
+                    console.log('下拉菜单当前状态:', dropdownMenu.classList.contains('show') ? '显示' : '隐藏');
                 });
                 
-                // 点击下拉菜单项选择工具
-                dropdownItems.forEach(function(item) {
-                    item.addEventListener('click', function(e) {
-                        e.stopPropagation();
-                        
-                        // 更新active状态
-                        dropdownItems.forEach(function(i) { i.classList.remove('active'); });
-                        this.classList.add('active');
-                        
-                        // 触发工具切换
-                        const tool = this.dataset.tool;
-                        const toolBtn = modal.querySelector(`[data-tool="${tool}"]`);
-                        if (toolBtn) {
-                            toolBtn.click();
-                        }
-                        
-                        // 隐藏下拉菜单
-                        dropdownMenu.classList.remove('show');
-                    });
+                // 关键修复：添加触摸事件支持
+                dropdownToggle.addEventListener('touchend', function(e) {
+                    console.log('=== 下拉菜单切换按钮被触摸 ===');
+                    e.preventDefault();
+                    e.stopPropagation();
+                    dropdownMenu.classList.toggle('show');
+                    console.log('下拉菜单当前状态:', dropdownMenu.classList.contains('show') ? '显示' : '隐藏');
                 });
+                
+                // 关键修复：使用事件委托，在下拉菜单容器上监听点击和触摸
+                dropdownMenu.addEventListener('click', function(e) {
+                    console.log('=== 下拉菜单被点击（事件委托） ===');
+                    handleDropdownItemClick(e);
+                });
+                
+                // 关键修复：添加触摸事件支持
+                dropdownMenu.addEventListener('touchend', function(e) {
+                    console.log('=== 下拉菜单被触摸（事件委托） ===');
+                    e.preventDefault();
+                    handleDropdownItemClick(e);
+                });
+                
+                // 处理下拉菜单项点击/触摸的通用函数
+                function handleDropdownItemClick(e) {
+                    console.log('点击的目标:', e.target);
+                    console.log('目标类名:', e.target.className);
+                    
+                    const item = e.target.closest('.tool-dropdown-item');
+                    if (!item) {
+                        console.log('点击的不是菜单项');
+                        return;
+                    }
+                    
+                    console.log('找到菜单项:', item);
+                    console.log('工具名称:', item.dataset.tool);
+                    
+                    e.stopPropagation();
+                    
+                    // 更新active状态
+                    dropdownItems.forEach(function(i) { i.classList.remove('active'); });
+                    item.classList.add('active');
+                    
+                    // 触发工具切换
+                    const tool = item.dataset.tool;
+                    const toolBtn = modal.querySelector(`[data-tool="${tool}"]`);
+                    console.log('找到的工具按钮:', toolBtn);
+                    if (toolBtn) {
+                        console.log('触发工具按钮点击');
+                        toolBtn.click();
+                    } else {
+                        console.error('未找到对应的工具按钮:', tool);
+                    }
+                    
+                    // 隐藏下拉菜单
+                    dropdownMenu.classList.remove('show');
+                }
                 
                 // 点击其他地方关闭下拉菜单
                 document.addEventListener('click', function() {

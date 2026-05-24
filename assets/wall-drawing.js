@@ -553,32 +553,34 @@
                 const startHandle = document.createElement('div');
                 startHandle.className = 'line-handle line-handle-start';
                 startHandle.style.position = 'absolute';
-                startHandle.style.width = '44px';  // 关键修复：增大触摸区域到44px
-                startHandle.style.height = '44px';
+                startHandle.style.width = '20px';  // 关键修复：减小到20px
+                startHandle.style.height = '20px';
                 startHandle.style.borderRadius = '50%';
-                startHandle.style.backgroundColor = '#FF0000';
-                startHandle.style.border = '3px solid white';
-                startHandle.style.boxShadow = '0 0 8px rgba(0,0,0,0.6)';
+                startHandle.style.backgroundColor = State.drawColor;  // 关键修复：使用当前线段颜色
+                startHandle.style.border = '2px solid white';
+                startHandle.style.boxShadow = '0 0 6px rgba(0,0,0,0.4)';
                 startHandle.style.cursor = 'move';
                 startHandle.style.pointerEvents = 'auto';
-                startHandle.style.left = (currentLine.startX * scaleX - 22) + 'px';  // 调整位置
-                startHandle.style.top = (currentLine.startY * scaleY - 22) + 'px';
+                startHandle.style.opacity = '0.7';  // 关键修复：半透明效果
+                startHandle.style.left = (currentLine.startX * scaleX - 10) + 'px';  // 调整位置
+                startHandle.style.top = (currentLine.startY * scaleY - 10) + 'px';
                 startHandle.style.touchAction = 'none';  // 防止触摸时滚动页面
                 
                 // 创建终点控制点
                 const endHandle = document.createElement('div');
                 endHandle.className = 'line-handle line-handle-end';
                 endHandle.style.position = 'absolute';
-                endHandle.style.width = '44px';  // 关键修复：增大触摸区域到44px
-                endHandle.style.height = '44px';
+                endHandle.style.width = '20px';  // 关键修复：减小到20px
+                endHandle.style.height = '20px';
                 endHandle.style.borderRadius = '50%';
-                endHandle.style.backgroundColor = '#FF0000';
-                endHandle.style.border = '3px solid white';
-                endHandle.style.boxShadow = '0 0 8px rgba(0,0,0,0.6)';
+                endHandle.style.backgroundColor = State.drawColor;  // 关键修复：使用当前线段颜色
+                endHandle.style.border = '2px solid white';
+                endHandle.style.boxShadow = '0 0 6px rgba(0,0,0,0.4)';
                 endHandle.style.cursor = 'move';
                 endHandle.style.pointerEvents = 'auto';
-                endHandle.style.left = (currentLine.endX * scaleX - 22) + 'px';  // 调整位置
-                endHandle.style.top = (currentLine.endY * scaleY - 22) + 'px';
+                endHandle.style.opacity = '0.7';  // 关键修复：半透明效果
+                endHandle.style.left = (currentLine.endX * scaleX - 10) + 'px';  // 调整位置
+                endHandle.style.top = (currentLine.endY * scaleY - 10) + 'px';
                 endHandle.style.touchAction = 'none';  // 防止触摸时滚动页面
                 
                 // 添加拖动事件
