@@ -11,7 +11,8 @@
             const textInput = modal.querySelector('.text-annotation-input');
             const textConfirmBtn = modal.querySelector('.text-confirm-btn');
 
-            textConfirmBtn.onclick = function() {
+            // 关键修复：添加确认按钮的点击和触摸事件处理
+            const handleConfirm = function() {
                 const text = textInput.value.trim();
                 if (text) {
                     this.addAnnotation(text);
@@ -19,6 +20,20 @@
                 textInputContainer.style.display = 'none';
                 textInput.value = '';
             }.bind(this);
+
+            // 桌面端点击事件
+            textConfirmBtn.onclick = function(e) {
+                e.preventDefault();
+                e.stopPropagation();
+                handleConfirm();
+            };
+
+            // 关键修复：移动端触摸事件
+            textConfirmBtn.addEventListener('touchend', function(e) {
+                e.preventDefault();
+                e.stopPropagation();
+                handleConfirm();
+            }, { passive: false });
 
             textInput.addEventListener('keydown', function(e) {
                 if (e.key === 'Enter' && !e.shiftKey) {

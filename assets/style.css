@@ -34,11 +34,19 @@ body {
   box-sizing: border-box;
   color: var(--fg-dark);
   flex: 1;
-  margin: 1em auto;
+  margin: 0.5em;
   padding: 1em;
   text-align: center;
-  width: 100%;
+  width: calc(100% - 1em);
   max-width: none;
+}
+
+/* 关键修复：在大屏幕上保持居中布局和较大边距 */
+@media (min-width: 768px) {
+  .box {
+    margin: 1em auto;
+    width: 100%;
+  }
 }
 
 .box form:first-of-type {
@@ -105,6 +113,30 @@ select {
   text-decoration: none;
 }
 
+/* 关键修复：小屏幕上减小按钮边距，防止溢出 */
+@media (max-width: 480px) {
+  button[type="submit"],
+  input[type="submit"],
+  button,
+  select {
+    margin: 5px;
+    padding: 8px 12px;
+    font-size: 14px;
+  }
+  
+  /* 确保表单元素在小屏幕上不溢出 */
+  .box form {
+    max-width: 100%;
+    overflow: hidden;
+  }
+  
+  /* 确保所有子元素都在容器内 */
+  .box * {
+    max-width: 100%;
+    box-sizing: border-box;
+  }
+}
+
 .wallContent {
   background-color: var(--bg-dark);
   border: none;
@@ -122,7 +154,6 @@ select {
   line-height: 1.6;
   box-sizing: border-box;
   overflow: auto;
-  min-width: 300px;
   min-height: 200px;
 }
 
@@ -927,6 +958,11 @@ select {
   box-shadow: 0 4px 12px rgba(76, 175, 80, 0.3);
   white-space: nowrap;
   height: fit-content;
+  /* 关键修复：触摸优化 */
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+  user-select: none;
+  -webkit-user-select: none;
 }
 
 .text-confirm-btn:hover {
