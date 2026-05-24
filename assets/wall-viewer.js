@@ -196,6 +196,76 @@
             if (dropdownToggle && dropdownMenu) {
                 console.log('下拉菜单初始化成功');
                 
+                // 关键修复：添加工具栏长按缩放功能
+                const toolbar = modal.querySelector('.modal-toolbar');
+                let toolbarLongPressTimer = null;
+                let isToolbarScaled = false;
+                let toolbarTouchStartX = 0;
+                let toolbarTouchStartY = 0;
+                
+                // 工具栏触摸开始
+                toolbar.addEventListener('touchstart', function(e) {
+                    // 只在触摸屏设备上生效
+                    if (e.touches.length === 1) {
+                        const touch = e.touches[0];
+                        toolbarTouchStartX = touch.clientX;
+                        toolbarTouchStartY = touch.clientY;
+                        
+                        // 设置长按定时器（800ms）
+                        toolbarLongPressTimer = setTimeout(function() {
+                            isToolbarScaled = !isToolbarScaled;
+                            
+                            if (isToolbarScaled) {
+                                // 放大到1.5倍
+                                toolbar.style.transform = 'translateX(-50%) scale(1.5)';
+                                toolbar.style.transition = 'transform 0.3s ease';
+                                
+                                // 振动反馈
+                                if (navigator.vibrate) {
+                                    navigator.vibrate(50);
+                                }
+                                
+                                // 显示提示
+                                Utils.showNotification('工具栏已放大，再次长按恢复');
+                            } else {
+                                // 恢复原始大小
+                                toolbar.style.transform = 'translateX(-50%) scale(1)';
+                                
+                                // 振动反馈
+                                if (navigator.vibrate) {
+                                    navigator.vibrate(30);
+                                }
+                                
+                                Utils.showNotification('工具栏已恢复');
+                            }
+                        }.bind(this), 800);
+                    }
+                }, { passive: true });
+                
+                // 工具栏触摸移动 - 如果移动超过10px，取消长按
+                toolbar.addEventListener('touchmove', function(e) {
+                    if (toolbarLongPressTimer) {
+                        const touch = e.touches[0];
+                        const moveDistance = Math.sqrt(
+                            Math.pow(touch.clientX - toolbarTouchStartX, 2) + 
+                            Math.pow(touch.clientY - toolbarTouchStartY, 2)
+                        );
+                        
+                        if (moveDistance > 10) {
+                            clearTimeout(toolbarLongPressTimer);
+                            toolbarLongPressTimer = null;
+                        }
+                    }
+                }, { passive: true });
+                
+                // 工具栏触摸结束
+                toolbar.addEventListener('touchend', function(e) {
+                    if (toolbarLongPressTimer) {
+                        clearTimeout(toolbarLongPressTimer);
+                        toolbarLongPressTimer = null;
+                    }
+                });
+                
                 // 点击切换按钮显示/隐藏下拉菜单
                 dropdownToggle.addEventListener('click', function(e) {
                     console.log('=== 下拉菜单切换按钮被点击 ===');
