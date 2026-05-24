@@ -12,19 +12,9 @@
 
             let watermarkToggle = modal.querySelector('.watermark-toggle');
             if (!watermarkToggle) {
-                const toolbar = modal.querySelector('.modal-toolbar');
-                if (toolbar) {
-                    watermarkToggle = document.createElement('button');
-                    watermarkToggle.className = 'toolbar-btn watermark-toggle';
-                    watermarkToggle.title = '水印设置';
-                    watermarkToggle.innerHTML = '💧';
-                    const exportPdfBtn = toolbar.querySelector('.export-pdf');
-                    if (exportPdfBtn) {
-                        toolbar.insertBefore(watermarkToggle, exportPdfBtn);
-                    } else {
-                        toolbar.appendChild(watermarkToggle);
-                    }
-                }
+                // 关键修复：现在工具栏结构改变，不需要动态添加按钮
+                // 水印设置已经放在下拉菜单中，所以这里跳过创建按钮
+                console.log('水印快捷开关已移至下拉菜单，跳过创建');
             }
 
             if (watermarkToggle) {

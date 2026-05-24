@@ -191,30 +191,42 @@ select {
 
 .modal-toolbar {
   position: fixed;
-  top: 20px;
+  bottom: 20px;  /* 关键修复：移到最下方 */
   left: 50%;
   transform: translateX(-50%);
   background-color: rgba(0, 0, 0, 0.85);
   padding: 10px 15px;
   border-radius: 15px;
   display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
   align-items: center;
-  justify-content: center;
+  gap: 8px;
   z-index: 10003;
   max-width: 90vw;
   box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
   backdrop-filter: blur(10px);
-  cursor: move;
+  /* 关键修复：禁用拖动，移除 cursor: move */
   user-select: none;
-  /* 关键修复：限定最多两行，但不裁剪下拉菜单 */
-  max-height: 120px;
-  overflow: visible;
-  /* 关键修复：为长按缩放添加过渡效果 */
-  transition: transform 0.3s ease;
-  /* 关键修复：确保缩放时不会超出屏幕 */
-  transform-origin: center top;
+  /* 关键修复：一行显示，支持横向滚动 */
+  height: 70px;
+  overflow: visible;  /* 关键修复：改为visible，允许下拉菜单弹出 */
+}
+
+/* 可滚动的工具容器 */
+.toolbar-scrollable {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  overflow-x: auto;
+  overflow-y: visible;  /* 关键修复：Y轴改为visible，允许下拉菜单弹出 */
+  flex: 1;
+  /* 隐藏滚动条但保持功能 */
+  scrollbar-width: none;  /* Firefox */
+  -ms-overflow-style: none;  /* IE/Edge */
+  padding: 5px 0;
+}
+
+.toolbar-scrollable::-webkit-scrollbar {
+  display: none;  /* Chrome/Safari */
 }
 
 /* 大屏幕时隐藏下拉菜单 */
@@ -229,31 +241,30 @@ select {
   margin-right: 8px;
   /* 关键修复：确保下拉菜单不被裁剪 */
   overflow: visible;
+  flex-shrink: 0;  /* 关键修复：防止被压缩 */
+}
+
+/* 关键修复：固定在左侧的下拉菜单 */
+.tool-dropdown-container.fixed-left {
+  position: sticky;
+  left: 0;
+  z-index: 10;
+  background-color: rgba(0, 0, 0, 0.85);  /* 与工具栏背景一致 */
+  padding-right: 8px;
+  border-right: 2px solid rgba(255, 255, 255, 0.3);  /* 分隔线 */
 }
 
 /* 关键修复：小屏幕时改为下拉菜单 */
 @media (max-width: 768px) {
   .modal-toolbar {
-    top: 10px;
+    bottom: 10px;  /* 关键修复：底部定位 */
     left: 10px;
     right: 10px;
     transform: none;
     max-width: none;
     padding: 8px;
     border-radius: 12px;
-    /* 小屏幕时也限定两行 */
-    max-height: 140px;
-  }
-  
-  /* 小屏幕时隐藏原有的工具按钮（但保留平移和选择） */
-  .toolbar-btn.zoom-in,
-  .toolbar-btn.zoom-out,
-  .toolbar-btn.zoom-reset,
-  .color-picker,
-  .brush-size,
-  .opacity-slider,
-  .opacity-value {
-    display: none;
+    height: 65px;  /* 关键修复：一行高度 */
   }
 }
 
@@ -266,17 +277,22 @@ select {
 
 .tool-dropdown-menu {
   display: none;
-  position: absolute;
-  top: 50px;
-  left: 0;
+  position: fixed;  /* 关键修复：改为fixed定位，相对于视口 */
+  bottom: 80px;  /* 关键修复：距离底部80px（工具栏高度70px + 10px间距） */
+  left: 10px;  /* 关键修复：与工具栏左侧对齐 */
   background-color: rgba(0, 0, 0, 0.95);
   border-radius: 12px;
   padding: 8px 0;
   min-width: 160px;
   box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
-  z-index: 99999 !important;  /* 关键修复：超高z-index */
+  z-index: 100000 !important;  /* 关键修复：超高z-index，确保在最上层 */
   backdrop-filter: blur(10px);
   pointer-events: auto !important;  /* 关键修复：确保可以接收点击 */
+}
+
+/* 关键修复：固定左侧的下拉菜单位置 */
+.tool-dropdown-container.fixed-left .tool-dropdown-menu {
+  left: 10px !important;  /* 确保与固定按钮对齐 */
 }
 
 .tool-dropdown-menu.show {
@@ -352,10 +368,9 @@ select {
   background-color: rgba(255, 255, 255, 0.2);
   color: white;
   border: 2px solid rgba(255, 255, 255, 0.4);
-  width: 36px;
-  height: 36px;
-  border-radius: 50%;
-  font-size: 18px;
+  width: 48px;  /* 关键修复：增大图标 */
+  height: 48px;  /* 关键修复：增大图标 */
+  font-size: 22px;  /* 关键修复：增大字体 */
   cursor: pointer;
   transition: all 0.2s;
   display: flex;
@@ -370,9 +385,9 @@ select {
 /* 关键修复：小屏幕时按钮更大，更易点击 */
 @media (max-width: 768px) {
   .toolbar-btn {
-    width: 44px;
-    height: 44px;
-    font-size: 20px;
+    width: 52px;  /* 关键修复：进一步增大 */
+    height: 52px;  /* 关键修复：进一步增大 */
+    font-size: 24px;  /* 关键修复：进一步增大 */
     margin: 2px;
   }
   

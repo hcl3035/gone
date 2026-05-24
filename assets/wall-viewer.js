@@ -41,9 +41,26 @@
             modal.id = 'imageModal';
             modal.className = 'imageModal';
             modal.innerHTML = `
+                <span class="modal-close">&times;</span>
+                <button class="modal-nav modal-prev">&#10094;</button>
+                <div class="modal-image-container">
+                    <div class="layers-container" style="position:absolute; top:0; left:0; width:100%; height:100%;">
+                        <img class="modal-image" src="" alt="Original Image" style="display:block; width:100%; height:100%; object-fit:contain;">
+                    </div>
+                    <div class="text-annotations-container" style="position:absolute; top:0; left:0; width:100%; height:100%; pointer-events:none; z-index:100; transform-origin:0 0;">
+                    </div>
+                    <div class="text-input-container" style="display:none; position:fixed; z-index:10000;">
+                        <textarea class="text-annotation-input" placeholder="输入文字..."></textarea>
+                        <button class="text-confirm-btn">确认</button>
+                    </div>
+                </div>
+                <button class="modal-nav modal-next">&#10095;</button>
+                <div class="modal-caption"></div>
+                
+                <!-- 关键修复：工具栏移到最下方，一行显示，支持横向滚动 -->
                 <div class="modal-toolbar">
-                    <!-- 关键修复：绘图工具在下拉菜单内 -->
-                    <div class="tool-dropdown-container">
+                    <!-- 关键修复：下拉菜单固定在左侧 -->
+                    <div class="tool-dropdown-container fixed-left">
                         <button class="toolbar-btn tool-dropdown-toggle" title="选择工具">&#128736;</button>
                         <div class="tool-dropdown-menu">
                             <button class="tool-dropdown-item active" data-tool="brush">&#9999; 画笔</button>
@@ -60,41 +77,30 @@
                         </div>
                     </div>
                     
-                    <!-- 第一行：导航和常用工具 -->
-                    <button class="toolbar-btn zoom-in" title="放大">+</button>
-                    <button class="toolbar-btn zoom-out" title="缩小">&minus;</button>
-                    <button class="toolbar-btn zoom-reset" title="重置">&#8634;</button>
-                    <span class="zoom-level">100%</span>
-                    <button class="toolbar-btn tool-hand" title="平移/抓手" data-tool="hand">&#9995;</button>
-                    <button class="toolbar-btn tool-select" title="选择/移动" data-tool="select">&#128070;</button>
-                    
-                    <!-- 第二行：编辑功能 -->
-                    <input type="color" class="color-picker" value="#FF0000" title="选择颜色">
-                    <input type="range" class="brush-size" min="1" max="20" value="3" title="画笔粗细">
-                    <input type="range" class="opacity-slider" min="0.1" max="1" step="0.1" value="1" title="透明度">
-                    <span class="opacity-value" style="color: white; font-size: 12px; min-width: 35px;">100%</span>
-                    <button class="toolbar-btn draw-undo" title="撤销">&#8617;</button>
-                    <button class="toolbar-btn draw-redo" title="重做">&#8618;</button>
-                    <button class="toolbar-btn draw-clear" title="清空">&#128465;</button>
-                    <div class="toolbar-separator"></div>
-                    <button class="toolbar-btn export-pdf" title="导出PDF">&#128196;</button>
-                    <button class="toolbar-btn download-annotated" title="下载标注图片">&#128190;</button>
-                </div>
-                <span class="modal-close">&times;</span>
-                <button class="modal-nav modal-prev">&#10094;</button>
-                <div class="modal-image-container">
-                    <div class="layers-container" style="position:absolute; top:0; left:0; width:100%; height:100%;">
-                        <img class="modal-image" src="" alt="Original Image" style="display:block; width:100%; height:100%; object-fit:contain;">
-                    </div>
-                    <div class="text-annotations-container" style="position:absolute; top:0; left:0; width:100%; height:100%; pointer-events:none; z-index:100; transform-origin:0 0;">
-                    </div>
-                    <div class="text-input-container" style="display:none; position:fixed; z-index:10000;">
-                        <textarea class="text-annotation-input" placeholder="输入文字..."></textarea>
-                        <button class="text-confirm-btn">确认</button>
+                    <!-- 可滚动的工具容器 -->
+                    <div class="toolbar-scrollable">
+                        <!-- 导航和常用工具 -->
+                        <button class="toolbar-btn zoom-in" title="放大">+</button>
+                        <button class="toolbar-btn zoom-out" title="缩小">&minus;</button>
+                        <button class="toolbar-btn zoom-reset" title="重置">&#8634;</button>
+                        <span class="zoom-level">100%</span>
+                        <button class="toolbar-btn tool-hand" title="平移/抓手" data-tool="hand">&#9995;</button>
+                        <!-- 关键修复：选择工具移到平移工具右边 -->
+                        <button class="toolbar-btn tool-select" title="选择/移动" data-tool="select">&#128070;</button>
+                        
+                        <!-- 编辑功能 -->
+                        <input type="color" class="color-picker" value="#FF0000" title="选择颜色">
+                        <input type="range" class="brush-size" min="1" max="20" value="3" title="画笔粗细">
+                        <input type="range" class="opacity-slider" min="0.1" max="1" step="0.1" value="1" title="透明度">
+                        <span class="opacity-value" style="color: white; font-size: 12px; min-width: 35px;">100%</span>
+                        <button class="toolbar-btn draw-undo" title="撤销">&#8617;</button>
+                        <button class="toolbar-btn draw-redo" title="重做">&#8618;</button>
+                        <button class="toolbar-btn draw-clear" title="清空">&#128465;</button>
+                        <div class="toolbar-separator"></div>
+                        <button class="toolbar-btn export-pdf" title="导出PDF">&#128196;</button>
+                        <button class="toolbar-btn download-annotated" title="下载标注图片">&#128190;</button>
                     </div>
                 </div>
-                <button class="modal-nav modal-next">&#10095;</button>
-                <div class="modal-caption"></div>
                 
                 <div class="layer-panel" style="display:none;">
                     <div class="layer-panel-header">
@@ -196,74 +202,28 @@
             if (dropdownToggle && dropdownMenu) {
                 console.log('下拉菜单初始化成功');
                 
-                // 关键修复：添加工具栏长按缩放功能
-                const toolbar = modal.querySelector('.modal-toolbar');
-                let toolbarLongPressTimer = null;
-                let isToolbarScaled = false;
-                let toolbarTouchStartX = 0;
-                let toolbarTouchStartY = 0;
+                // 关键修复：添加横向滚动支持（触摸拖动）
+                const scrollable = modal.querySelector('.toolbar-scrollable');
+                let isScrolling = false;
+                let scrollStartX = 0;
+                let scrollLeft = 0;
                 
-                // 工具栏触摸开始
-                toolbar.addEventListener('touchstart', function(e) {
-                    // 只在触摸屏设备上生效
-                    if (e.touches.length === 1) {
-                        const touch = e.touches[0];
-                        toolbarTouchStartX = touch.clientX;
-                        toolbarTouchStartY = touch.clientY;
-                        
-                        // 设置长按定时器（800ms）
-                        toolbarLongPressTimer = setTimeout(function() {
-                            isToolbarScaled = !isToolbarScaled;
-                            
-                            if (isToolbarScaled) {
-                                // 放大到1.5倍
-                                toolbar.style.transform = 'translateX(-50%) scale(1.5)';
-                                toolbar.style.transition = 'transform 0.3s ease';
-                                
-                                // 振动反馈
-                                if (navigator.vibrate) {
-                                    navigator.vibrate(50);
-                                }
-                                
-                                // 显示提示
-                                Utils.showNotification('工具栏已放大，再次长按恢复');
-                            } else {
-                                // 恢复原始大小
-                                toolbar.style.transform = 'translateX(-50%) scale(1)';
-                                
-                                // 振动反馈
-                                if (navigator.vibrate) {
-                                    navigator.vibrate(30);
-                                }
-                                
-                                Utils.showNotification('工具栏已恢复');
-                            }
-                        }.bind(this), 800);
-                    }
+                scrollable.addEventListener('touchstart', function(e) {
+                    isScrolling = true;
+                    scrollStartX = e.touches[0].pageX - scrollable.offsetLeft;
+                    scrollLeft = scrollable.scrollLeft;
                 }, { passive: true });
                 
-                // 工具栏触摸移动 - 如果移动超过10px，取消长按
-                toolbar.addEventListener('touchmove', function(e) {
-                    if (toolbarLongPressTimer) {
-                        const touch = e.touches[0];
-                        const moveDistance = Math.sqrt(
-                            Math.pow(touch.clientX - toolbarTouchStartX, 2) + 
-                            Math.pow(touch.clientY - toolbarTouchStartY, 2)
-                        );
-                        
-                        if (moveDistance > 10) {
-                            clearTimeout(toolbarLongPressTimer);
-                            toolbarLongPressTimer = null;
-                        }
-                    }
-                }, { passive: true });
+                scrollable.addEventListener('touchmove', function(e) {
+                    if (!isScrolling) return;
+                    e.preventDefault();
+                    const x = e.touches[0].pageX - scrollable.offsetLeft;
+                    const walk = (x - scrollStartX) * 2; // 滚动速度加倍
+                    scrollable.scrollLeft = scrollLeft - walk;
+                }, { passive: false });
                 
-                // 工具栏触摸结束
-                toolbar.addEventListener('touchend', function(e) {
-                    if (toolbarLongPressTimer) {
-                        clearTimeout(toolbarLongPressTimer);
-                        toolbarLongPressTimer = null;
-                    }
+                scrollable.addEventListener('touchend', function() {
+                    isScrolling = false;
                 });
                 
                 // 点击切换按钮显示/隐藏下拉菜单
@@ -470,7 +430,8 @@
             }
             
             // 关键修复：添加工具栏拖动功能
-            this.makeToolbarDraggable(modal);
+            // 关键修复：禁用工具栏拖动功能，防止移出页面
+            // this.makeToolbarDraggable(modal);
             
             console.log('Tools setup complete');
 
@@ -636,17 +597,17 @@
             }
         },
 
-        makeToolbarDraggable: function(modal) {
+        // 关键修复：工具栏拖动功能已禁用，防止移出页面
+        /* makeToolbarDraggable: function(modal) {
             const toolbar = modal.querySelector('.modal-toolbar');
             if (!toolbar) return;
 
             let isDragging = false;
             let startX, startY, initialLeft, initialTop;
-            let hasBeenDragged = false; // 关键修复：标记是否已经拖动过
+            let hasBeenDragged = false;
 
             // 鼠标事件
             toolbar.addEventListener('mousedown', function(e) {
-                // 关键修复：如果点击的是按钮或下拉菜单，不拖动
                 if (e.target.classList.contains('toolbar-btn') || 
                     e.target.classList.contains('color-picker') ||
                     e.target.classList.contains('tool-dropdown-toggle') ||
@@ -661,7 +622,6 @@
                 startX = e.clientX;
                 startY = e.clientY;
                 
-                // 关键修复：首次拖动时，先获取实际位置并设置
                 if (!hasBeenDragged) {
                     const rect = toolbar.getBoundingClientRect();
                     toolbar.style.left = rect.left + 'px';
@@ -669,7 +629,6 @@
                     toolbar.style.transform = 'none';
                     hasBeenDragged = true;
                     
-                    // 重新获取位置作为起始点
                     initialLeft = rect.left;
                     initialTop = rect.top;
                 } else {
@@ -691,13 +650,11 @@
                 let newLeft = initialLeft + deltaX;
                 let newTop = initialTop + deltaY;
                 
-                // 关键修复：简化的边界检查，允许自由拖动
                 const viewportWidth = window.innerWidth;
                 const viewportHeight = window.innerHeight;
                 const toolbarWidth = toolbar.offsetWidth;
                 const toolbarHeight = toolbar.offsetHeight;
                 
-                // 允许拖动到屏幕边缘外一点点，提供更好的体验
                 newLeft = Math.max(-toolbarWidth / 2, Math.min(newLeft, viewportWidth - toolbarWidth / 2));
                 newTop = Math.max(0, Math.min(newTop, viewportHeight - toolbarHeight));
                 
@@ -715,7 +672,6 @@
 
             // 触摸事件（移动端支持）
             toolbar.addEventListener('touchstart', function(e) {
-                // 关键修复：如果点击的是按钮或下拉菜单，不拖动
                 if (e.target.classList.contains('toolbar-btn') || 
                     e.target.classList.contains('color-picker') ||
                     e.target.classList.contains('tool-dropdown-toggle') ||
@@ -731,7 +687,6 @@
                 startX = touch.clientX;
                 startY = touch.clientY;
                 
-                // 关键修复：首次拖动时，先获取实际位置并设置
                 if (!hasBeenDragged) {
                     const rect = toolbar.getBoundingClientRect();
                     toolbar.style.left = rect.left + 'px';
@@ -747,7 +702,6 @@
                     initialTop = rect.top;
                 }
                 
-                // 添加视觉反馈
                 toolbar.style.opacity = '0.8';
                 toolbar.style.transition = 'none';
                 
@@ -764,7 +718,6 @@
                 let newLeft = initialLeft + deltaX;
                 let newTop = initialTop + deltaY;
                 
-                // 关键修复：简化的边界检查，允许自由拖动
                 const viewportWidth = window.innerWidth;
                 const viewportHeight = window.innerHeight;
                 const toolbarWidth = toolbar.offsetWidth;
@@ -773,7 +726,6 @@
                 newLeft = Math.max(-toolbarWidth / 2, Math.min(newLeft, viewportWidth - toolbarWidth / 2));
                 newTop = Math.max(0, Math.min(newTop, viewportHeight - toolbarHeight));
                 
-                // 关键修复：使用requestAnimationFrame优化性能
                 requestAnimationFrame(function() {
                     toolbar.style.left = newLeft + 'px';
                     toolbar.style.top = newTop + 'px';
@@ -786,12 +738,11 @@
             document.addEventListener('touchend', function() {
                 if (isDragging) {
                     isDragging = false;
-                    // 恢复透明度
                     toolbar.style.opacity = '1';
                     toolbar.style.transition = 'opacity 0.2s ease';
                 }
             });
-        },
+        }, */
 
         setupMultiTouch: function(container, layersContainer) {
             let initialDistance = 0;
